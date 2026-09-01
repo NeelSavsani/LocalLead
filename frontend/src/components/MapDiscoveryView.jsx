@@ -315,10 +315,10 @@ export default function MapDiscoveryView({ leads, mapCenter, onScan, loading, se
   };
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '370px 1fr 340px', gap: '16px', height: 'calc(100vh - 110px)', padding: '0 20px 20px 20px' }}>
+    <div className="map-workspace">
       
       {/* Left Search Controls Panel */}
-      <div className="glass-panel" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '18px', overflowY: 'auto' }}>
+      <aside className="glass-panel map-controls-panel" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '18px', overflowY: 'auto' }}>
         <div>
           <h2 style={{ fontSize: '1.1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: '#fff' }}>
             <MapPin size={18} color="var(--primary)" />
@@ -569,10 +569,10 @@ export default function MapDiscoveryView({ leads, mapCenter, onScan, loading, se
             <span>Good Web Presence</span>
           </div>
         </div>
-      </div>
+      </aside>
 
       {/* Center Interactive Map Container */}
-      <div className="glass-panel" style={{ overflow: 'hidden', position: 'relative' }}>
+      <section className="glass-panel map-canvas-panel" style={{ overflow: 'hidden', position: 'relative' }}>
         
         {/* Floating Map View Switcher (Normal, Satellite, Terrain) */}
         <div style={{
@@ -618,10 +618,10 @@ export default function MapDiscoveryView({ leads, mapCenter, onScan, loading, se
         </div>
 
         <div ref={mapRef} style={{ width: '100%', height: '100%' }} />
-      </div>
+      </section>
 
       {/* Right Business Results Drawer */}
-      <div className="glass-panel" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px', overflowY: 'auto' }}>
+      <aside className="glass-panel map-results-panel" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px', overflowY: 'auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <h3 style={{ fontSize: '1rem', fontWeight: 700 }}>Deduplicated Leads ({leads.length})</h3>
           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Two-Score Model</span>
@@ -729,7 +729,7 @@ export default function MapDiscoveryView({ leads, mapCenter, onScan, loading, se
             );
           })
         )}
-      </div>
+      </aside>
 
     </div>
   );

@@ -11,9 +11,9 @@ export default function Navbar({ activeTab, setActiveTab, stats, onExport, searc
   ];
 
   return (
-    <header className="glass-panel" style={{ margin: '16px 20px', padding: '14px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
+    <header className="glass-panel app-navbar" style={{ margin: '16px 20px', padding: '14px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
       {/* Brand */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+      <div className="app-navbar-brand" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
         <div style={{
           width: '42px',
           height: '42px',
@@ -35,7 +35,7 @@ export default function Navbar({ activeTab, setActiveTab, stats, onExport, searc
       </div>
 
       {/* Navigation Tabs */}
-      <nav style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(0,0,0,0.3)', padding: '4px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.06)' }}>
+      <nav className="app-navbar-tabs" style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(0,0,0,0.3)', padding: '4px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.06)' }}>
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -68,7 +68,7 @@ export default function Navbar({ activeTab, setActiveTab, stats, onExport, searc
       </nav>
 
       {/* Action / Stats Quick Summary */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+      <div className="app-navbar-actions" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
         <div style={{ display: 'flex', gap: '12px', fontSize: '0.8rem' }}>
           <div style={{ padding: '4px 10px', background: 'rgba(255,255,255,0.05)', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.08)' }}>
             <span style={{ color: 'var(--text-muted)' }}>Total Leads: </span>
