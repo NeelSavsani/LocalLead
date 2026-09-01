@@ -22,6 +22,7 @@ class WebsiteAnalysisOut(BaseModel):
     is_mobile_friendly: bool
     has_online_booking: bool
     has_contact_form: bool
+    digital_presence_status: str
     opportunity_score: int
     audit_notes: Optional[str] = None
 
@@ -31,6 +32,8 @@ class WebsiteAnalysisOut(BaseModel):
 class BusinessOut(BusinessBase):
     id: int
     search_location: str
+    sources_count: int = 1
+    source_providers: str = "openstreetmap"
     analysis: Optional[WebsiteAnalysisOut] = None
 
     class Config:
@@ -40,6 +43,7 @@ class BusinessOut(BusinessBase):
 class LeadOut(BaseModel):
     id: int
     lead_code: str
+    data_confidence: int = 80
     score: int
     priority: str
     status: str
@@ -61,9 +65,10 @@ class LeadUpdateStatus(BaseModel):
     estimated_budget: Optional[str] = None
     next_follow_up: Optional[str] = None
 
-# Discovery Search Request
+# Discovery Search Request with Google Maps URL support
 class DiscoveryRequest(BaseModel):
-    location: str # e.g. "GH5 Circle, Gandhinagar" or lat,lng
+    location: str # Location name OR Google Maps link
+    gmaps_url: Optional[str] = None # Optional explicit Google Maps URL
     radius_km: float = 1.0
     categories: Optional[List[str]] = Field(default_factory=lambda: ["Restaurant", "Cafe", "Garage", "Salon", "Clinic", "Retail Store"])
 

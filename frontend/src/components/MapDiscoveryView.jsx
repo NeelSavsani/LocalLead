@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, MapPin, Layers, Globe, Phone, AlertTriangle, CheckCircle2, ShieldAlert, Sparkles, Navigation } from 'lucide-react';
+import { Search, MapPin, Layers, Globe, Phone, ShieldCheck, CheckCircle2, Sparkles, Navigation, Link as LinkIcon, AlertTriangle, Eye } from 'lucide-react';
 import L from 'leaflet';
 
 // Fix default Leaflet icon paths
@@ -12,25 +12,55 @@ L.Icon.Default.mergeOptions({
 
 const CATEGORIES = ["Restaurant", "Cafe", "Garage", "Salon", "Clinic", "Retail Store"];
 
-export default function MapDiscoveryView({ leads, mapCenter, onScan, loading, searchLocation, setSearchLocation, radius, setRadius }) {
+// Map Tile Layers Config
+const TILE_LAYERS = {
+  normal: {
+    label: 'Normal',
+    icon: '🗺️',
+    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    maxZoom: 19
+  },
+  satellite: {
+    label: 'Satellite',
+    icon: '🛰️',
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, and GIS User Community',
+    maxZoom: 19
+  },
+  terrain: {
+    label: 'Terrain',
+    icon: '⛰️',
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',
+    attribution: 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ, TomTom, USGS, NPS',
+    maxZoom: 19
+  }
+};
+
+export default function MapDiscoveryView({ leads, mapCenter, onScan, loading, searchLocation, setSearchLocation, radius, setRadius, scanError, setScanError }) {
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
+  const tileLayerRef = useRef(null);
   const markersGroupRef = useRef(null);
   const circleRef = useRef(null);
+  const centerMarkerRef = useRef(null);
 
+  const [mapStyle, setMapStyle] = useState('normal'); // 'normal', 'satellite', 'terrain'
   const [selectedCategories, setSelectedCategories] = useState(CATEGORIES);
   const [selectedLead, setSelectedLead] = useState(null);
+  const [gmapsUrl, setGmapsUrl] = useState('');
 
-  // Initialize Map with standard OpenStreetMap tiles
+  // Initialize Map
   useEffect(() => {
     if (!mapRef.current) return;
 
     if (!mapInstanceRef.current) {
       const map = L.map(mapRef.current).setView([23.2245, 72.6515], 14);
 
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-        maxZoom: 19
+      const initialConfig = TILE_LAYERS.normal;
+      tileLayerRef.current = L.tileLayer(initialConfig.url, {
+        attribution: initialConfig.attribution,
+        maxZoom: initialConfig.maxZoom
       }).addTo(map);
 
       markersGroupRef.current = L.layerGroup().addTo(map);
@@ -38,24 +68,82 @@ export default function MapDiscoveryView({ leads, mapCenter, onScan, loading, se
     }
   }, []);
 
-  // Pan and re-center map whenever mapCenter or radius changes
+  // Change Map Style (Normal, Satellite, Terrain)
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map || !tileLayerRef.current) return;
+
+    const layerConfig = TILE_LAYERS[mapStyle] || TILE_LAYERS.normal;
+    map.removeLayer(tileLayerRef.current);
+
+    tileLayerRef.current = L.tileLayer(layerConfig.url, {
+      attribution: layerConfig.attribution,
+      maxZoom: layerConfig.maxZoom
+    }).addTo(map);
+  }, [mapStyle]);
+
+  // Pan, re-center map, update radius circle & render standalone SEARCH CENTER PIN (No blue background)
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map || !mapCenter) return;
 
     map.setView([mapCenter.latitude, mapCenter.longitude], 14);
 
+    // Update Radius Circle
     if (circleRef.current) {
       map.removeLayer(circleRef.current);
     }
-
     circleRef.current = L.circle([mapCenter.latitude, mapCenter.longitude], {
-      color: '#6366f1',
-      fillColor: '#6366f1',
-      fillOpacity: 0.12,
+      color: mapStyle === 'satellite' ? '#38bdf8' : '#6366f1',
+      fillColor: mapStyle === 'satellite' ? '#38bdf8' : '#6366f1',
+      fillOpacity: 0.15,
       radius: radius * 1000
     }).addTo(map);
-  }, [mapCenter, radius]);
+
+    // Render Standalone Search Center Pin Icon (No background circle)
+    if (centerMarkerRef.current) {
+      map.removeLayer(centerMarkerRef.current);
+    }
+
+    const centerIconHtml = `
+      <div style="
+        font-size: 34px;
+        line-height: 1;
+        filter: drop-shadow(0 3px 6px rgba(0,0,0,0.8));
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        user-select: none;
+      ">
+        📍
+      </div>
+    `;
+
+    const centerDivIcon = L.divIcon({
+      html: centerIconHtml,
+      className: 'clean-standalone-pin',
+      iconSize: [34, 34],
+      iconAnchor: [17, 32] // Anchor tip of pin to coordinates
+    });
+
+    const centerPopup = `
+      <div style="padding: 4px;">
+        <strong style="font-size: 0.95rem; color: #818cf8;">📍 Search Target Origin</strong>
+        <div style="font-size: 0.82rem; color: #f8fafc; margin-top: 4px; font-weight: 600;">${searchLocation}</div>
+        <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 2px;">
+          Coordinates: ${mapCenter.latitude.toFixed(4)}°, ${mapCenter.longitude.toFixed(4)}°
+        </div>
+        <div style="font-size: 0.75rem; color: #38bdf8; margin-top: 4px;">
+          Radius: ${radius} km (${radius * 1000}m)
+        </div>
+      </div>
+    `;
+
+    centerMarkerRef.current = L.marker([mapCenter.latitude, mapCenter.longitude], { icon: centerDivIcon })
+      .bindPopup(centerPopup)
+      .addTo(map);
+
+  }, [mapCenter, radius, mapStyle, searchLocation]);
 
   // Update Markers when leads change
   useEffect(() => {
@@ -69,11 +157,11 @@ export default function MapDiscoveryView({ leads, mapCenter, onScan, loading, se
         const b = l.business;
         const w = b.analysis;
         
-        let markerColor = '#10b981'; // Green (good site)
+        let markerColor = '#10b981'; // Green
         if (!w || !w.has_website) {
-          markerColor = '#f43f5e'; // Red (No website - High opportunity)
+          markerColor = '#f43f5e'; // Red
         } else if (w.opportunity_score >= 50) {
-          markerColor = '#f59e0b'; // Amber (Poor site)
+          markerColor = '#f59e0b'; // Amber
         }
 
         const customHtml = `
@@ -83,7 +171,7 @@ export default function MapDiscoveryView({ leads, mapCenter, onScan, loading, se
             height: 28px;
             border-radius: 50%;
             border: 3px solid #ffffff;
-            box-shadow: 0 0 10px ${markerColor};
+            box-shadow: 0 0 12px ${markerColor};
             display: flex;
             align-items: center;
             justify-content: center;
@@ -103,10 +191,13 @@ export default function MapDiscoveryView({ leads, mapCenter, onScan, loading, se
         });
 
         const popupContent = `
-          <div style="min-width: 180px;">
+          <div style="min-width: 190px;">
             <strong style="font-size: 1rem; color: #f8fafc;">${b.name}</strong>
-            <div style="font-size: 0.8rem; color: #94a3b8; margin-top: 2px;">${b.category} • ${b.distance_meters}m</div>
-            <div style="margin-top: 8px; font-weight: 600; font-size: 0.85rem; color: ${markerColor};">
+            <div style="font-size: 0.8rem; color: #94a3b8; margin-top: 2px;">${b.category} • ${b.distance_meters}m away</div>
+            <div style="margin-top: 6px; font-size: 0.78rem; color: #38bdf8;">
+              🛡️ Confidence: ${l.data_confidence || 80}% (${b.source_providers || 'OSM'})
+            </div>
+            <div style="margin-top: 6px; font-weight: 600; font-size: 0.85rem; color: ${markerColor};">
               ${!w || !w.has_website ? '❌ No Website (High Opportunity)' : `⚠️ Opportunity Score: ${w.opportunity_score}/100`}
             </div>
             <div style="margin-top: 6px; font-size: 0.8rem; color: #cbd5e1;">${b.phone || 'No phone listed'}</div>
@@ -132,32 +223,35 @@ export default function MapDiscoveryView({ leads, mapCenter, onScan, loading, se
 
   const handleScanSubmit = (e) => {
     e.preventDefault();
-    onScan(searchLocation, radius, selectedCategories);
+    onScan(searchLocation, radius, selectedCategories, gmapsUrl);
   };
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '360px 1fr 340px', gap: '16px', height: 'calc(100vh - 110px)', padding: '0 20px 20px 20px' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: '370px 1fr 340px', gap: '16px', height: 'calc(100vh - 110px)', padding: '0 20px 20px 20px' }}>
       
       {/* Left Search Controls Panel */}
-      <div className="glass-panel" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '20px', overflowY: 'auto' }}>
+      <div className="glass-panel" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '18px', overflowY: 'auto' }}>
         <div>
           <h2 style={{ fontSize: '1.1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: '#fff' }}>
             <MapPin size={18} color="var(--primary)" />
-            Area & Radius Selection
+            Multi-Source Scan Setup
           </h2>
-          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '4px' }}>Define geographic region to scan for local business leads.</p>
+          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '4px' }}>Search by area name or paste a Google Maps link.</p>
         </div>
 
         <form onSubmit={handleScanSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div>
             <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>
-              LOCATION / LANDMARK
+              LOCATION / LANDMARK NAME
             </label>
             <div style={{ position: 'relative' }}>
               <input
                 type="text"
                 value={searchLocation}
-                onChange={(e) => setSearchLocation(e.target.value)}
+                onChange={(e) => {
+                  setSearchLocation(e.target.value);
+                  if (scanError) setScanError(null);
+                }}
                 placeholder="e.g. Racecourse, Rajkot or LDRP Gandhinagar"
                 style={{
                   width: '100%',
@@ -166,16 +260,70 @@ export default function MapDiscoveryView({ leads, mapCenter, onScan, loading, se
                   border: '1px solid var(--border-subtle)',
                   background: 'rgba(0,0,0,0.3)',
                   color: '#fff',
-                  fontSize: '0.9rem'
+                  fontSize: '0.88rem'
                 }}
               />
               <Search size={16} color="var(--text-muted)" style={{ position: 'absolute', left: '12px', top: '12px' }} />
             </div>
           </div>
 
+          {/* Dedicated Google Maps URL Input */}
           <div>
             <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>
-              SEARCH RADIUS: <strong style={{ color: 'var(--primary)' }}>{radius} km ({radius * 1000} m)</strong>
+              OR GOOGLE MAPS LINK / COORDINATES
+            </label>
+            <div style={{ position: 'relative' }}>
+              <input
+                type="text"
+                value={gmapsUrl}
+                onChange={(e) => {
+                  setGmapsUrl(e.target.value);
+                  if (scanError) setScanError(null);
+                }}
+                placeholder="Paste link: https://maps.app.goo.gl/... or @22.29,70.79"
+                style={{
+                  width: '100%',
+                  padding: '10px 12px 10px 36px',
+                  borderRadius: 'var(--radius-sm)',
+                  border: scanError ? '1px solid #f43f5e' : '1px solid var(--border-subtle)',
+                  background: 'rgba(0,0,0,0.3)',
+                  color: '#fff',
+                  fontSize: '0.82rem'
+                }}
+              />
+              <LinkIcon size={15} color={gmapsUrl ? "var(--primary)" : "var(--text-muted)"} style={{ position: 'absolute', left: '12px', top: '12px' }} />
+            </div>
+            <span style={{ fontSize: '0.72rem', color: 'var(--text-dim)', marginTop: '4px', display: 'block' }}>
+              Tip: Copy link from Google Maps on phone or browser and paste here!
+            </span>
+          </div>
+
+          {/* Unresolved Location Warning Alert */}
+          {scanError && (
+            <div style={{
+              padding: '12px',
+              borderRadius: '8px',
+              background: 'rgba(244, 63, 94, 0.12)',
+              border: '1px solid rgba(244, 63, 94, 0.3)',
+              color: '#fca5a5',
+              fontSize: '0.8rem',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '6px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700, color: '#fb7185' }}>
+                <AlertTriangle size={16} /> Location Not Found
+              </div>
+              <div>{scanError}</div>
+              <div style={{ fontSize: '0.74rem', color: '#fecdd3', marginTop: '2px' }}>
+                👉 Copy the address link from <strong>Google Maps</strong> and paste it into the box above to scan immediately!
+              </div>
+            </div>
+          )}
+
+          <div>
+            <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>
+              RADIUS VALIDATION: <strong style={{ color: 'var(--primary)' }}>{radius} km ({radius * 1000} m)</strong>
             </label>
             <div style={{ display: 'flex', gap: '8px' }}>
               {[0.5, 1.0, 2.0, 5.0].map((r) => (
@@ -204,7 +352,7 @@ export default function MapDiscoveryView({ leads, mapCenter, onScan, loading, se
 
           <div>
             <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>
-              BUSINESS CATEGORIES
+              CATEGORIES
             </label>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
               {CATEGORIES.map((cat) => (
@@ -238,7 +386,7 @@ export default function MapDiscoveryView({ leads, mapCenter, onScan, loading, se
             style={{ width: '100%', justifyContent: 'center', padding: '12px' }}
           >
             {loading ? (
-              <span>Scanning OpenStreetMap...</span>
+              <span>Running Multi-Source Scan...</span>
             ) : (
               <>
                 <Sparkles size={18} />
@@ -249,8 +397,12 @@ export default function MapDiscoveryView({ leads, mapCenter, onScan, loading, se
         </form>
 
         {/* Legend */}
-        <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
           <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-dim)' }}>MAP MARKERS LEGEND</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem' }}>
+            <span style={{ fontSize: '15px' }}>📍</span>
+            <span>Search Target Origin Pin</span>
+          </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem' }}>
             <span style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#f43f5e' }}></span>
             <span>No Website (High Opportunity)</span>
@@ -268,20 +420,64 @@ export default function MapDiscoveryView({ leads, mapCenter, onScan, loading, se
 
       {/* Center Interactive Map Container */}
       <div className="glass-panel" style={{ overflow: 'hidden', position: 'relative' }}>
+        
+        {/* Floating Map View Switcher (Normal, Satellite, Terrain) */}
+        <div style={{
+          position: 'absolute',
+          top: '14px',
+          right: '14px',
+          zIndex: 1000,
+          background: 'rgba(15, 23, 42, 0.85)',
+          backdropFilter: 'blur(10px)',
+          padding: '4px',
+          borderRadius: '10px',
+          border: '1px solid rgba(255,255,255,0.12)',
+          display: 'flex',
+          gap: '4px',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.5)'
+        }}>
+          {Object.entries(TILE_LAYERS).map(([key, config]) => {
+            const isActive = mapStyle === key;
+            return (
+              <button
+                key={key}
+                onClick={() => setMapStyle(key)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  background: isActive ? 'var(--primary)' : 'transparent',
+                  color: isActive ? '#fff' : 'var(--text-muted)',
+                  fontSize: '0.8rem',
+                  fontWeight: isActive ? 700 : 500,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                <span>{config.icon}</span>
+                <span>{config.label}</span>
+              </button>
+            );
+          })}
+        </div>
+
         <div ref={mapRef} style={{ width: '100%', height: '100%' }} />
       </div>
 
       {/* Right Business Results Drawer */}
       <div className="glass-panel" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px', overflowY: 'auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <h3 style={{ fontSize: '1rem', fontWeight: 700 }}>Discovered Leads ({leads.length})</h3>
-          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Sorted by Score</span>
+          <h3 style={{ fontSize: '1rem', fontWeight: 700 }}>Deduplicated Leads ({leads.length})</h3>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Two-Score Model</span>
         </div>
 
         {leads.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '40px 10px', color: 'var(--text-muted)' }}>
             <Navigation size={32} color="var(--primary)" style={{ opacity: 0.5, marginBottom: '8px' }} />
-            <p style={{ fontSize: '0.85rem' }}>No leads loaded yet. Click <strong>"Scan Area"</strong> to discover local businesses.</p>
+            <p style={{ fontSize: '0.85rem' }}>No leads loaded yet. Enter a location or paste a Google Maps link to scan local businesses.</p>
           </div>
         ) : (
           leads.map((l) => {
@@ -308,6 +504,16 @@ export default function MapDiscoveryView({ leads, mapCenter, onScan, loading, se
 
                 <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '4px' }}>
                   {b.category} • {b.distance_meters} m away
+                </div>
+
+                {/* Two-Score Indicators */}
+                <div style={{ display: 'flex', gap: '10px', marginTop: '6px', fontSize: '0.72rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#38bdf8', background: 'rgba(56,189,248,0.1)', padding: '2px 6px', borderRadius: '4px' }}>
+                    <ShieldCheck size={12} /> Confidence: {l.data_confidence || 80}%
+                  </div>
+                  <div style={{ color: 'var(--text-dim)', background: 'rgba(255,255,255,0.05)', padding: '2px 6px', borderRadius: '4px' }}>
+                    Sources: {b.source_providers || 'openstreetmap'}
+                  </div>
                 </div>
 
                 <div style={{ marginTop: '8px', fontSize: '0.78rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>

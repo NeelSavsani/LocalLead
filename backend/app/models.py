@@ -16,6 +16,8 @@ class Business(Base):
     longitude = Column(Float)
     distance_meters = Column(Float)
     search_location = Column(String, index=True)
+    sources_count = Column(Integer, default=1)
+    source_providers = Column(String, default="openstreetmap")
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     # Relationships
@@ -32,6 +34,7 @@ class WebsiteAnalysis(Base):
     is_mobile_friendly = Column(Boolean, default=False)
     has_online_booking = Column(Boolean, default=False)
     has_contact_form = Column(Boolean, default=False)
+    digital_presence_status = Column(String, default="NO_WEBSITE")
     opportunity_score = Column(Integer, default=0)
     audit_notes = Column(Text, nullable=True)
     checked_at = Column(DateTime, default=datetime.datetime.utcnow)
@@ -44,7 +47,8 @@ class Lead(Base):
     id = Column(Integer, primary_key=True, index=True)
     lead_code = Column(String, unique=True, index=True)
     business_id = Column(Integer, ForeignKey("businesses.id"), unique=True)
-    score = Column(Integer, default=0)
+    data_confidence = Column(Integer, default=75) # 0-100 Data Confidence Score
+    score = Column(Integer, default=0) # 0-100 Opportunity Score
     priority = Column(String, default="MEDIUM") # HIGH, MEDIUM, LOW
     status = Column(String, default="NEW") # NEW, CONTACTED, FOLLOW_UP, INTERESTED, QUOTATION, WON, LOST
     owner_name = Column(String, nullable=True)

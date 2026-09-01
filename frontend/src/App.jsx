@@ -16,6 +16,7 @@ export default function App() {
   const [projects, setProjects] = useState([]);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [scanError, setScanError] = useState(null);
   const [mapCenter, setMapCenter] = useState({ latitude: 23.2245, longitude: 72.6515 });
 
   // Search parameters
@@ -43,14 +44,17 @@ export default function App() {
     fetchAllData();
   }, []);
 
-  const triggerScan = async (loc, radKm, categories) => {
+  const triggerScan = async (loc, radKm, categories, gmapsUrl) => {
     setLoading(true);
+    setScanError(null);
+
     try {
       const resp = await fetch(`${API_BASE}/discover`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           location: loc || searchLocation,
+          gmaps_url: gmapsUrl || undefined,
           radius_km: radKm || radius,
           categories: categories && categories.length > 0 ? categories : undefined
         })
@@ -58,6 +62,13 @@ export default function App() {
 
       if (resp.ok) {
         const data = await resp.json();
+
+        // Check if location resolution failed (NO HARDCODED GH5 FALLBACK)
+        if (data.location_resolved === false) {
+          setScanError(data.error_message || "Could not find coordinates for this location. Please paste a Google Maps URL below.");
+          return;
+        }
+
         setLeads(data.leads);
         if (data.center) {
           setMapCenter(data.center);
@@ -65,9 +76,12 @@ export default function App() {
         // Refresh dashboard statistics
         const statsRes = await fetch(`${API_BASE}/stats`);
         if (statsRes.ok) setStats(await statsRes.json());
+      } else {
+        setScanError("Failed to perform scan. Please check your backend connection or enter a valid Google Maps URL.");
       }
     } catch (err) {
       console.error("Scan error:", err);
+      setScanError("Network connection error. Ensure the FastAPI backend server is running.");
     } finally {
       setLoading(false);
     }
@@ -128,8 +142,13 @@ export default function App() {
     }
   };
 
+  // Location-specific Excel export
   const handleExport = () => {
-    window.open(`${API_BASE}/export`, '_blank');
+    if (searchLocation && searchLocation.trim()) {
+      window.open(`${API_BASE}/export?location=${encodeURIComponent(searchLocation.trim())}`, '_blank');
+    } else {
+      window.open(`${API_BASE}/export`, '_blank');
+    }
   };
 
   return (
@@ -139,6 +158,7 @@ export default function App() {
         setActiveTab={setActiveTab}
         stats={stats}
         onExport={handleExport}
+        searchLocation={searchLocation}
       />
 
       <main style={{ flex: 1 }}>
@@ -152,6 +172,8 @@ export default function App() {
             setSearchLocation={setSearchLocation}
             radius={radius}
             setRadius={setRadius}
+            scanError={scanError}
+            setScanError={setScanError}
           />
         )}
 
@@ -160,6 +182,7 @@ export default function App() {
             leads={leads}
             onUpdateLead={handleUpdateLead}
             onRefresh={fetchAllData}
+            onExport={handleExport}
           />
         )}
 

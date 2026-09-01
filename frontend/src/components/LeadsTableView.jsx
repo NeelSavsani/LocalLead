@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Search, Filter, Phone, Edit, Globe, CheckCircle, AlertTriangle, X } from 'lucide-react';
+import { Search, Filter, Phone, Edit, Globe, ShieldCheck, AlertTriangle, X } from 'lucide-react';
 
-export default function LeadsTableView({ leads, onUpdateLead, onRefresh }) {
+export default function LeadsTableView({ leads, onUpdateLead, onRefresh, onExport }) {
   const [priorityFilter, setPriorityFilter] = useState('ALL');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
@@ -120,9 +120,10 @@ export default function LeadsTableView({ leads, onUpdateLead, onRefresh }) {
               <th style={{ padding: '14px 16px' }}>Lead ID</th>
               <th style={{ padding: '14px 16px' }}>Business Name</th>
               <th style={{ padding: '14px 16px' }}>Category</th>
-              <th style={{ padding: '14px 16px' }}>Phone</th>
-              <th style={{ padding: '14px 16px' }}>Website Audit</th>
-              <th style={{ padding: '14px 16px' }}>Score</th>
+              <th style={{ padding: '14px 16px' }}>Phone / Sources</th>
+              <th style={{ padding: '14px 16px' }}>Website Status</th>
+              <th style={{ padding: '14px 16px' }}>Data Confidence</th>
+              <th style={{ padding: '14px 16px' }}>Opp. Score</th>
               <th style={{ padding: '14px 16px' }}>Priority</th>
               <th style={{ padding: '14px 16px' }}>Status</th>
               <th style={{ padding: '14px 16px', textAlign: 'right' }}>Actions</th>
@@ -131,7 +132,7 @@ export default function LeadsTableView({ leads, onUpdateLead, onRefresh }) {
           <tbody>
             {filteredLeads.length === 0 ? (
               <tr>
-                <td colSpan="9" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
+                <td colSpan="10" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
                   No leads found matching your criteria.
                 </td>
               </tr>
@@ -157,21 +158,29 @@ export default function LeadsTableView({ leads, onUpdateLead, onRefresh }) {
                           {b.phone}
                         </div>
                       ) : (
-                        <span style={{ color: 'var(--text-dim)' }}>Not Available</span>
+                        <span style={{ color: 'var(--text-dim)' }}>Not Listed</span>
                       )}
+                      <div style={{ fontSize: '0.7rem', color: '#94a3b8', marginTop: '2px' }}>
+                        Sources: {b.source_providers || 'openstreetmap'}
+                      </div>
                     </td>
                     <td style={{ padding: '14px 16px' }}>
                       {!w || !w.has_website ? (
                         <span style={{ color: '#fb7185', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                          <AlertTriangle size={13} /> No Website
+                          <AlertTriangle size={13} /> NO_WEBSITE
                         </span>
                       ) : (
                         <div style={{ fontSize: '0.8rem' }}>
-                          <span style={{ color: w.opportunity_score >= 50 ? '#fbbf24' : '#34d399' }}>
-                            Quality Score: {w.opportunity_score}/100
+                          <span style={{ color: w.opportunity_score >= 50 ? '#fbbf24' : '#34d399', fontWeight: 600 }}>
+                            {w.digital_presence_status || 'WEBSITE_FOUND'}
                           </span>
                         </div>
                       )}
+                    </td>
+                    <td style={{ padding: '14px 16px' }}>
+                      <span style={{ color: '#38bdf8', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                        <ShieldCheck size={14} /> {l.data_confidence || 80}%
+                      </span>
                     </td>
                     <td style={{ padding: '14px 16px', fontWeight: 700, fontSize: '0.95rem' }}>{l.score}</td>
                     <td style={{ padding: '14px 16px' }}>
@@ -221,7 +230,7 @@ export default function LeadsTableView({ leads, onUpdateLead, onRefresh }) {
               Manage Lead: {activeModalLead.business.name}
             </h3>
             <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '20px' }}>
-              Lead ID: {activeModalLead.lead_code} | Score: {activeModalLead.score} ({activeModalLead.priority})
+              Lead ID: {activeModalLead.lead_code} | Confidence: {activeModalLead.data_confidence}% | Opp. Score: {activeModalLead.score} ({activeModalLead.priority})
             </p>
 
             <form onSubmit={handleModalSave} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>

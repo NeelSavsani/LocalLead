@@ -1,312 +1,950 @@
-# LocalLead — Geo-Targeted Local Business Lead Generation Platform
+# LocalLead — Multi-Source Business Discovery & Lead Generation Platform
 
-## 1. Project Overview
+> **Discover local businesses. Verify their digital presence. Find development opportunities. Convert businesses into clients.**
 
-**LocalLead** is a geo-targeted B2B lead-generation and sales platform for discovering local businesses that may need a website or application.
+## 1. Product Overview
 
-The platform allows a user to select a location (for example, **GH5 Circle, Gandhinagar**) and a search radius (for example, **1 km**). It discovers businesses within that area, checks their digital presence, identifies businesses with no website or an inadequate website, and turns those businesses into organized sales leads.
+LocalLead is a geo-targeted B2B lead-generation platform for web/app development businesses.
 
-The ultimate goal is not merely to generate an Excel file. The goal is to create a complete workflow:
+A user selects an area and radius—for example:
 
-**Select Area → Discover Businesses → Check Web Presence → Qualify Leads → Contact Owners → Convert Leads → Build Website/App → Track Projects**
+- Location: **GH5 Circle, Gandhinagar**
+- Radius: **1 km**
+- Categories: Restaurants, Cafes, Garages, Salons, Clinics
 
----
+The platform discovers businesses from **multiple legitimate data sources**, combines and deduplicates the results, independently validates their geographic distance, verifies business information, discovers and analyzes their website/digital presence, scores the sales opportunity, and manages the resulting leads through a CRM.
 
-## 2. Problem Statement
-
-Many local businesses such as:
-
-- Restaurants
-- Cafes
-- Garages
-- Salons
-- Clinics
-- Gyms
-- Retail stores
-- Coaching classes
-- Repair shops
-- Local service providers
-
-either have:
-
-- No website
-- An outdated website
-- A website with poor mobile support
-- No online booking
-- No online menu/catalog
-- No proper contact/lead form
-- Poor digital presence
-
-A web-development company can potentially sell websites or applications to these businesses, but manually finding such businesses is slow and inefficient.
-
-**LocalLead automates the discovery and qualification process.**
-
----
-
-## 3. Core Use Case
-
-Example:
-
-A sales/development team wants to find potential website clients around **GH5 Circle, Gandhinagar**.
-
-They enter:
+The complete workflow is:
 
 ```text
-Location: GH5 Circle, Gandhinagar
-Radius: 1 km
-
-Categories:
-- Restaurant
-- Cafe
-- Garage
-- Salon
-- Retail Store
-- Clinic
+Select Area
+    ↓
+Discover Businesses
+    ↓
+Collect From Multiple Sources
+    ↓
+Normalize Results
+    ↓
+Deduplicate
+    ↓
+Validate Geographic Radius
+    ↓
+Verify Business Information
+    ↓
+Discover Website / Digital Presence
+    ↓
+Analyze Website Quality
+    ↓
+Identify Digital Gaps
+    ↓
+Calculate Lead Score
+    ↓
+CRM
+    ↓
+Contact / Follow-up
+    ↓
+Quotation
+    ↓
+Client
+    ↓
+Website / App Project
 ```
-
-The platform searches for businesses in the selected geographic area.
-
-Example result:
-
-| Business | Category | Distance | Website |
-|---|---|---:|---|
-| Patel Auto Garage | Garage | 430 m | No |
-| Royal Kathiyawadi | Restaurant | 610 m | No |
-| ABC Cafe | Cafe | 250 m | Yes |
-| XYZ Salon | Salon | 720 m | Yes |
-
-Businesses with no website become potential leads.
 
 ---
 
-## 4. Complete Workflow
+## 2. Why Multi-Source?
 
-### Step 1 — Select Geographic Area
-
-The user selects a location using a map or search box.
+No single external business-data source should be assumed to contain every real-world business.
 
 Example:
+
+```text
+Actual businesses in an area: 150
+
+Source A: 110
+Source B: 95
+Source C: 70
+```
+
+After merging:
+
+```text
+Source A ─────┐
+Source B ─────┼──→ Merge → Deduplicate → 137 unique businesses
+Source C ─────┘
+```
+
+Multi-source discovery improves coverage, but it **does not guarantee 100% completeness**. The product should report confidence/coverage rather than claim that every business was found.
+
+---
+
+# 3. High-Level Architecture
+
+```text
+                         ┌───────────────────────┐
+                         │        USER           │
+                         │ Location + Radius     │
+                         │ Categories            │
+                         └───────────┬───────────┘
+                                     │
+                                     ▼
+                         ┌───────────────────────┐
+                         │   LOCATION SERVICE    │
+                         │ Geocoding + Coordinates│
+                         └───────────┬───────────┘
+                                     │
+                                     ▼
+                       ┌───────────────────────────┐
+                       │     SCAN ORCHESTRATOR     │
+                       └────────────┬──────────────┘
+                                    │
+              ┌─────────────────────┼─────────────────────┐
+              ▼                     ▼                     ▼
+      ┌───────────────┐     ┌───────────────┐     ┌───────────────┐
+      │ Places / API  │     │ OpenStreetMap  │     │ Licensed Data │
+      │ Source Adapter│     │ Source Adapter │     │ Source Adapter│
+      └───────┬───────┘     └───────┬───────┘     └───────┬───────┘
+              │                     │                     │
+              └─────────────────────┼─────────────────────┘
+                                    ▼
+                         ┌─────────────────────┐
+                         │ RESULT NORMALIZER   │
+                         └──────────┬──────────┘
+                                    ▼
+                         ┌─────────────────────┐
+                         │ DEDUPLICATION       │
+                         └──────────┬──────────┘
+                                    ▼
+                         ┌─────────────────────┐
+                         │ GEO VALIDATION      │
+                         │ distance <= radius  │
+                         └──────────┬──────────┘
+                                    ▼
+                         ┌─────────────────────┐
+                         │ BUSINESS VERIFIER   │
+                         └──────────┬──────────┘
+                                    ▼
+                    ┌──────────────────────────────┐
+                    │ DIGITAL PRESENCE DISCOVERY  │
+                    └──────────────┬───────────────┘
+                                   ▼
+                    ┌──────────────────────────────┐
+                    │ WEBSITE ANALYSIS ENGINE      │
+                    └──────────────┬───────────────┘
+                                   ▼
+                    ┌──────────────────────────────┐
+                    │ LEAD SCORING ENGINE          │
+                    └──────────────┬───────────────┘
+                                   ▼
+                         ┌─────────────────────┐
+                         │     PostgreSQL      │
+                         └──────────┬──────────┘
+                                    │
+                 ┌──────────────────┼──────────────────┐
+                 ▼                  ▼                  ▼
+           ┌────────────┐     ┌────────────┐     ┌────────────┐
+           │ Dashboard  │     │    CRM     │     │ Excel      │
+           │ + Map      │     │ + Sales    │     │ Export     │
+           └────────────┘     └─────┬──────┘     └────────────┘
+                                    ▼
+                              Client / Project
+```
+
+---
+
+# 4. Critical Architecture Rule
+
+**Do not make Chromium the primary source of truth.**
+
+Instead:
+
+```text
+External Business Sources
+          ↓
+      Discovery
+          ↓
+      PostgreSQL
+          ↓
+ Verification / Enrichment
+          ↓
+ Digital Analysis
+          ↓
+    Lead Intelligence
+```
+
+Chromium/Playwright is a **worker for permitted verification/enrichment tasks**, not the foundation of the data layer.
+
+---
+
+# 5. Source Adapter Pattern
+
+All providers should implement a common internal interface:
+
+```text
+BusinessSource
+    ├── PlacesSource
+    ├── OpenStreetMapSource
+    ├── LicensedProviderSource
+    └── FutureSource
+```
+
+Each adapter converts provider-specific data into the same internal model.
+
+Example normalized object:
+
+```json
+{
+  "source": "places",
+  "source_id": "abc123",
+  "name": "Patel Auto Garage",
+  "category": "Garage",
+  "phone": "+91 XXXXX XXXXX",
+  "address": "GH5, Gandhinagar",
+  "latitude": 23.215,
+  "longitude": 72.636,
+  "website": null
+}
+```
+
+The rest of the application should not contain provider-specific logic.
+
+---
+
+# 6. Location Processing
+
+User enters:
 
 ```text
 GH5 Circle, Gandhinagar
 ```
 
-The system obtains the location's latitude and longitude.
-
-The user then chooses a radius:
+The Location Service resolves it to:
 
 ```text
-500 m
-1 km
-2 km
-5 km
+latitude
+longitude
+formatted address
 ```
 
-The system creates a geographic search area around the selected point.
+Example:
+
+```json
+{
+  "query": "GH5 Circle, Gandhinagar",
+  "latitude": 23.215,
+  "longitude": 72.636
+}
+```
+
+The scan configuration becomes:
+
+```json
+{
+  "latitude": 23.215,
+  "longitude": 72.636,
+  "radius_meters": 1000,
+  "categories": [
+    "restaurant",
+    "cafe",
+    "garage",
+    "salon"
+  ]
+}
+```
 
 ---
 
-### Step 2 — Discover Local Businesses
+# 7. Business Discovery
 
-The system retrieves businesses within the selected radius.
+Do not rely on one generic query.
 
-For each business, it attempts to collect publicly/business-appropriate information such as:
+Use category-specific discovery:
 
 ```text
-Business Name
-Category
-Address
-Phone
-Website
-Location
-Opening Hours
-Public Business Profile
-Social Links (when available)
+Restaurants
+Cafes
+Garages
+Car repair
+Bike repair
+Salons
+Barbers
+Clinics
+Gyms
+Bakeries
+Electronics stores
+Mobile shops
+Furniture stores
+Clothing stores
+Coaching classes
+Repair services
+```
+
+Each source performs the searches it supports.
+
+Example:
+
+```text
+                 GH5 + 1 km
+                     │
+       ┌─────────────┼─────────────┐
+       ▼             ▼             ▼
+   Restaurant       Cafe         Garage
+       │             │             │
+       └─────────────┼─────────────┘
+                     ▼
+                Raw Results
+```
+
+---
+
+# 8. Result Normalization
+
+Different providers use different fields:
+
+```text
+Source A → business_name
+Source B → name
+Source C → title
+```
+
+Normalize everything to:
+
+```text
+Business
+├── name
+├── category
+├── phone
+├── address
+├── latitude
+├── longitude
+├── website
+└── source_records
+```
+
+Keep the original source ID and raw evidence.
+
+---
+
+# 9. Deduplication
+
+The same business may appear several times:
+
+```text
+Source A: Patel Auto Garage
+Source B: Patel Auto Garage - GH5
+Source C: Patel Auto Garage
+```
+
+These should become one business.
+
+Use multiple signals:
+
+```text
+Name similarity
++
+Phone number
++
+Coordinates
++
+Address similarity
++
+Website/domain
 ```
 
 Example:
 
 ```text
-Patel Auto Garage
-Category: Automobile Garage
-Phone: +91 XXXXX XXXXX
-Address: Near GH5 Circle, Gandhinagar
-Website: Not Found
-Distance: 430 m
+Name similarity:      96%
+Phone match:          YES
+Address similarity:   91%
+Coordinates:          15m apart
+Website:              same
+
+→ SAME BUSINESS
 ```
+
+Do not rely only on business name.
 
 ---
 
-### Step 3 — Check Website Existence
+# 10. Geographic Validation
 
-The platform determines whether the business appears to have an official website.
+This step is mandatory.
 
-Possible outcomes:
+A provider may return a business because it considers it "nearby." LocalLead should independently calculate the distance from the selected point.
+
+Example:
 
 ```text
-NO WEBSITE
-WEBSITE FOUND
-WEBSITE UNVERIFIED
+GH5:
+23.2150, 72.6360
+
+Business:
+23.2170, 72.6380
+
+Distance:
+~300 m
+
+→ INCLUDE
 ```
 
-The system should distinguish a genuine business website from unrelated search results.
+If:
+
+```text
+Distance = 1.4 km
+Radius = 1 km
+
+→ EXCLUDE
+```
+
+Core rule:
+
+```python
+if distance <= radius:
+    include_business()
+else:
+    exclude_business()
+```
+
+Use a proper geographic distance calculation such as Haversine or a PostGIS/geospatial equivalent.
 
 ---
 
-### Step 4 — Analyze Existing Website
+# 11. Business Verification
 
-A business with a website should not automatically be discarded.
+After discovery and deduplication, verify:
 
-Some businesses have websites that are technically present but commercially weak.
+```text
+Business name
+Phone
+Address
+Coordinates
+Category
+Website
+Business status
+```
 
-The platform can optionally evaluate:
+Example:
+
+```text
+Name:        ✓
+Phone:       ✓
+Address:     ✓
+Coordinates: ✓
+Category:    ✓
+
+Verification:
+HIGH CONFIDENCE
+```
+
+---
+
+# 12. Data Confidence Score
+
+Separate data correctness from sales potential.
+
+Example:
+
+```text
+Name verified:       20
+Phone verified:      25
+Address verified:    20
+Coordinates:         20
+Website relation:    15
+------------------------
+Total:              100
+```
+
+Example:
+
+```text
+Data Confidence: 94/100
+```
+
+---
+
+# 13. Website Discovery
+
+For each business:
+
+```text
+Business
+   ↓
+Possible website/domain discovery
+   ↓
+Candidate website
+   ↓
+Business identity verification
+```
+
+Possible sources:
+
+```text
+Business data provider
+Public business profiles
+Search results
+Business's own public online presence
+```
+
+A domain should not be considered official merely because its name resembles the business.
+
+---
+
+# 14. Website Verification
+
+Suppose the system finds:
+
+```text
+patelautogarage.com
+```
+
+Check:
+
+```text
+Business name match?
+Phone match?
+Address match?
+Category match?
+```
+
+If enough signals agree:
+
+```text
+Website = VERIFIED
+```
+
+Otherwise:
+
+```text
+Website = POSSIBLE / UNVERIFIED
+```
+
+---
+
+# 15. Chromium / Playwright
+
+Chromium is useful as an isolated browser worker for permitted public-information verification/enrichment.
+
+Architecture:
+
+```text
+FastAPI
+   ↓
+Create Verification Job
+   ↓
+Queue
+   ↓
+Browser Worker
+   ↓
+Playwright
+   ↓
+Chromium
+   ↓
+Permitted public information
+   ↓
+Structured result
+   ↓
+PostgreSQL
+```
+
+Do not build the system around bypassing CAPTCHA, anti-bot protections, access controls, or rate limits.
+
+---
+
+# 16. Why Browser Workers Are Separate
+
+Avoid:
+
+```text
+HTTP Request
+   ↓
+Start Chromium
+   ↓
+Scan everything
+   ↓
+Wait
+   ↓
+HTTP Response
+```
+
+Prefer:
+
+```text
+User
+ ↓
+Create Scan Job
+ ↓
+Return Job ID
+ ↓
+Background Worker
+ ↓
+Discovery / Verification
+ ↓
+Database
+ ↓
+Frontend Progress Update
+```
+
+This allows long-running scans without blocking the API.
+
+---
+
+# 17. Website Analysis
+
+A business with a website can still be a lead.
+
+Analyze:
 
 ```text
 HTTPS
 Mobile responsiveness
-Page accessibility
-Loading/performance indicators
-Modernity/usability
+Basic performance
 Contact information
-Online menu/catalog
+Clear CTA
 Online booking
-WhatsApp/contact CTA
+Online ordering
+Online menu/catalog
 Service information
-Basic SEO signals
+WhatsApp/contact CTA
 ```
 
 Example:
 
 ```text
-Business: XYZ Salon
+XYZ Salon
 
-Website: Found
-Mobile Friendly: No
-Online Booking: No
-Contact Form: No
-Modern Design: Poor
+Website: YES
+Mobile friendly: NO
+Online booking: NO
+Contact information: YES
+Services: YES
+WhatsApp CTA: NO
 
-Website Opportunity Score: 82/100
-```
-
-This business can still be a strong sales prospect.
-
----
-
-## 5. Lead Qualification
-
-The platform assigns a lead score.
-
-Example scoring model:
-
-```text
-No website                    +50
-Poor website                 +30
-No online booking            +10
-No online menu/catalog       +10
-No WhatsApp/contact CTA       +5
-Missing important information +5
-Business phone available     +10
-```
-
-Example:
-
-```text
-Patel Auto Garage
-
-No Website:             +50
-No Online Booking:      +10
-Phone Available:        +10
-Business Opportunity:   +70
-
-Lead Priority: HIGH
-```
-
-The scoring algorithm should be configurable rather than permanently hard-coded.
-
----
-
-## 6. Lead Database
-
-Instead of making Excel the primary storage system, the platform should store leads in a database.
-
-Example lead:
-
-```text
-Lead ID: LL-0001
-
-Business Name:
-Patel Auto Garage
-
-Category:
-Garage
-
-Owner Name:
-Unknown
-
-Phone:
-+91 XXXXX XXXXX
-
-Address:
-Near GH5 Circle, Gandhinagar
-
-Latitude:
-<latitude>
-
-Longitude:
-<longitude>
-
-Distance:
-430 m
-
-Website:
-Not Found
-
-Website Quality:
-N/A
-
-Lead Score:
-70
-
-Priority:
+Opportunity:
 HIGH
-
-Status:
-NEW
 ```
-
-Owner information should only be recorded when it is legitimately available from an appropriate source or obtained during the sales process. It should not be guessed.
 
 ---
 
-## 7. Excel Export
+# 18. Digital Presence Classification
 
-The user can export qualified leads to Excel.
+Use statuses such as:
+
+```text
+NO WEBSITE
+WEBSITE FOUND
+WEBSITE VERIFIED
+WEBSITE POOR
+WEBSITE GOOD
+WEBSITE UNVERIFIED
+```
+
+This is much more useful than simply:
+
+```text
+Website = YES / NO
+```
+
+---
+
+# 19. Sales Opportunity Score
+
+Example scoring:
+
+```text
+No website                 +50
+Poor website               +30
+No online booking          +10
+No online ordering/menu    +10
+Weak contact CTA            +5
+Business contact available +10
+```
 
 Example:
 
-| Lead ID | Business | Category | Owner | Phone | Address | Website | Score | Status |
-|---|---|---|---|---|---|---|---:|---|
-| LL-0001 | Patel Auto Garage | Garage | — | +91... | GH5 | No | 70 | New |
-| LL-0002 | Royal Kathiyawadi | Restaurant | — | +91... | GH5 | No | 80 | New |
-| LL-0003 | XYZ Salon | Salon | — | +91... | GH5 | Poor | 82 | New |
+```text
+Patel Auto Garage
 
-Excel is an **export/reporting feature**, not the source of truth.
+No website:        +50
+No booking:        +10
+Phone available:   +10
+
+Opportunity Score: 70/100
+```
+
+Make the scoring rules configurable.
 
 ---
 
-## 8. Sales / CRM Workflow
+# 20. Two-Score Model
 
-Once a lead is generated, the sales team contacts the business.
+Every business can have:
 
-Lead lifecycle:
+```text
+Data Confidence Score
+Sales Opportunity Score
+```
+
+Example:
+
+```text
+Patel Auto Garage
+
+Data Confidence:    96/100
+Opportunity Score:  91/100
+
+Priority: HIGH
+```
+
+This prevents unreliable data from being treated as a high-quality sales lead.
+
+---
+
+# 21. Evidence and Freshness
+
+Store evidence for important decisions.
+
+Example:
+
+```text
+website_status = NO_WEBSITE
+checked_at = 2026-09-01
+sources = [source_a, source_b]
+confidence = 94
+```
+
+Also store:
+
+```text
+first_seen_at
+last_seen_at
+last_verified_at
+```
+
+Businesses can change:
+
+```text
+Phone changes
+Address changes
+Website launches
+Website disappears
+Business closes
+Business changes category
+```
+
+Therefore the database should support periodic re-checks.
+
+---
+
+# 22. Re-Scan
+
+Example:
+
+```text
+GH5 Circle
+1 km
+
+September:
+204 verified businesses
+
+December:
+219 verified businesses
+```
+
+Detect:
+
+```text
+New businesses
+Removed businesses
+Changed phones
+New websites
+Removed websites
+Changed website quality
+```
+
+This turns the database into a living lead database.
+
+---
+
+# 23. Database
+
+Use:
+
+```text
+PostgreSQL
+```
+
+Recommended tables:
+
+```text
+users
+scans
+scan_categories
+businesses
+business_sources
+business_locations
+business_contacts
+websites
+website_analysis
+leads
+lead_scores
+lead_activities
+follow_ups
+clients
+quotations
+projects
+developers
+```
+
+---
+
+# 24. Important Tables
+
+### scans
+
+```text
+id
+user_id
+location_name
+latitude
+longitude
+radius_meters
+status
+started_at
+completed_at
+```
+
+### businesses
+
+```text
+id
+name
+category
+normalized_name
+latitude
+longitude
+formatted_address
+created_at
+updated_at
+```
+
+### business_sources
+
+```text
+id
+business_id
+provider
+source_id
+raw_data
+first_seen_at
+last_seen_at
+```
+
+### business_contacts
+
+```text
+id
+business_id
+phone
+email
+contact_type
+verified
+source
+```
+
+### websites
+
+```text
+id
+business_id
+url
+status
+verified
+last_checked_at
+```
+
+### website_analysis
+
+```text
+id
+website_id
+mobile_score
+performance_score
+security_status
+booking_available
+ordering_available
+menu_available
+contact_available
+overall_score
+analyzed_at
+```
+
+### leads
+
+```text
+id
+business_id
+status
+priority
+data_confidence
+opportunity_score
+owner_name
+notes
+created_at
+updated_at
+```
+
+---
+
+# 25. Database Relationship
+
+```text
+User
+ │
+ └── Scan
+      │
+      └── Businesses
+            │
+            ├── Business Sources
+            ├── Location
+            ├── Contacts
+            ├── Website
+            │     └── Website Analysis
+            │
+            └── Lead
+                  │
+                  ├── Lead Score
+                  ├── Activities
+                  ├── Follow-ups
+                  └── Client
+                        │
+                        └── Project
+```
+
+---
+
+# 26. CRM
+
+Lead statuses:
+
+```text
+NEW
+CONTACTED
+FOLLOW_UP
+INTERESTED
+REQUIREMENTS
+QUOTATION
+NEGOTIATION
+WON
+LOST
+```
+
+Example:
 
 ```text
 NEW
  ↓
 CONTACTED
- ↓
-FOLLOW-UP
  ↓
 INTERESTED
  ↓
@@ -315,291 +953,217 @@ REQUIREMENTS
 QUOTATION
  ↓
 WON
- ↓
-PROJECT
 ```
 
-Alternative outcome:
+---
 
-```text
-NEW
- ↓
-CONTACTED
- ↓
-NOT INTERESTED
- ↓
-LOST
-```
-
-The system should store call notes and follow-up information.
+# 27. Follow-Up
 
 Example:
 
 ```text
-Lead: Patel Auto Garage
+Business:
+Patel Auto Garage
 
-Status: INTERESTED
+Status:
+INTERESTED
 
 Call Note:
-Owner wants a website containing services,
-gallery, location, contact details and
-service booking.
-
-Estimated Budget:
-₹20,000–₹30,000
+Owner wants a service-booking website.
 
 Next Follow-up:
 Tomorrow
+
+Estimated Budget:
+₹20,000–₹30,000
 ```
 
 ---
 
-## 9. Converting a Lead Into a Client
+# 28. Client Conversion
 
-Suppose Patel Auto Garage agrees to build a website.
-
-Requirements:
-
-```text
-Home
-About
-Services
-Service Pricing
-Gallery
-Contact
-Google Maps
-WhatsApp Button
-Service Booking Form
-Mobile Responsive Design
-```
-
-Quotation:
-
-```text
-Project: Garage Website
-Price: ₹25,000
-Estimated Delivery: 15 Days
-```
-
-The CRM converts:
+When a lead becomes a customer:
 
 ```text
 Lead
-  ↓
-Qualified Lead
-  ↓
+ ↓
 Client
-  ↓
+ ↓
 Project
 ```
-
----
-
-## 10. Developer / Project Management
-
-If the business becomes a client, the platform can create a project.
 
 Example:
 
 ```text
-Project:
-Patel Auto Garage Website
-
 Client:
 Patel Auto Garage
 
-Developer:
-Developer A
+Project:
+Business Website
 
 Budget:
 ₹25,000
 
 Deadline:
-15 Days
+15 days
 
-Status:
-DEVELOPMENT
+Developer:
+Developer A
 ```
 
-Possible project statuses:
+---
+
+# 29. Project Management
+
+Optional later module:
 
 ```text
 PLANNING
+ ↓
 REQUIREMENTS
+ ↓
 DESIGN
+ ↓
 DEVELOPMENT
+ ↓
 TESTING
-CLIENT_REVIEW
+ ↓
+CLIENT REVIEW
+ ↓
 COMPLETED
+ ↓
 MAINTENANCE
 ```
 
-This turns the platform into more than a lead finder: it becomes a lightweight business-development and project-management system.
-
 ---
 
-# 11. Dashboard
+# 30. Excel Export
 
-A useful dashboard could display:
+Excel is an export/reporting feature, not the primary database.
+
+Flow:
 
 ```text
-BUSINESS DISCOVERY
-
-Businesses Found:       247
-No Website:              63
-Poor Website:            41
-Potential Leads:        104
-High Priority:           37
-
-SALES
-
-Contacted:               72
-Interested:              19
-Proposals:               12
-Projects Won:             7
-
-REVENUE
-
-Estimated Pipeline:   ₹3,20,000
-Closed Revenue:       ₹1,75,000
+PostgreSQL
+   ↓
+Filter Leads
+   ↓
+Generate Excel
+   ↓
+.xlsx
 ```
 
-These numbers are examples only.
-
----
-
-# 12. Map-Based Interface
-
-The primary interface can be map-based.
-
-Concept:
+Suggested columns:
 
 ```text
-                    MAP
-
-          ● Business
-     ●             ●
-              ┌───────────┐
-         ●    │           │    ●
-              │    GH5    │
-     ●        │   CIRCLE  │
-              │           │
-         ●    └───────────┘
-                    1 KM
-
-────────────────────────────────
-Businesses Found: 247
-
-[ Scan Area ]
-```
-
-Businesses can be displayed as map markers.
-
-Marker colors/statuses can represent:
-
-```text
-New Lead
-High Priority
-Contacted
-Interested
-Client
+Lead ID
+Business Name
+Category
+Owner Name
+Phone
+Email
+Address
+Latitude
+Longitude
+Distance
+Website
+Website Status
+Website Quality
+Data Confidence
+Opportunity Score
+Lead Priority
+Lead Status
+Notes
 ```
 
 ---
 
-# 13. Recommended System Architecture
+# 31. Dashboard
+
+Example:
 
 ```text
-                  WEB DASHBOARD
-                       |
-                       v
-              LOCATION / MAP MODULE
-                       |
-                       v
-             BUSINESS DISCOVERY API
-                       |
-                       v
-              BUSINESS DATA SERVICE
-                       |
-                       v
-             WEBSITE DETECTION ENGINE
-                       |
-                       v
-             WEBSITE ANALYSIS ENGINE
-                       |
-                       v
-               LEAD SCORING ENGINE
-                       |
-                       v
-                 POSTGRESQL
-                       |
-             +---------+---------+
-             |                   |
-             v                   v
-         CRM MODULE         EXCEL EXPORT
-             |
-             v
-       SALES PIPELINE
-             |
-             v
-       CLIENT CONVERSION
-             |
-             v
-       PROJECT MANAGEMENT
-             |
-             v
-        DEVELOPER WORKFLOW
+LOCAL BUSINESS SCAN
+
+Area:
+GH5 Circle
+
+Radius:
+1 km
+
+Businesses discovered:
+247
+
+Unique businesses:
+218
+
+Verified within radius:
+204
+
+No website:
+63
+
+Poor website:
+41
+
+High opportunity:
+37
+```
+
+Sales:
+
+```text
+Contacted:
+72
+
+Interested:
+19
+
+Quotation:
+12
+
+Projects Won:
+7
 ```
 
 ---
 
-# 14. Suggested Technology Stack
+# 32. Scan Progress
+
+```text
+Scan: GH5 Circle — 1 km
+
+[████████████████░░░░] 82%
+
+✓ Location resolved
+✓ Source A completed
+✓ Source B completed
+✓ Source C completed
+✓ Deduplication completed
+✓ Geographic validation completed
+→ Website analysis running
+```
+
+---
+
+# 33. Recommended Technology Stack
 
 ## Frontend
 
-Recommended:
-
 ```text
-React.js / Next.js
-HTML
-CSS
-JavaScript / TypeScript
+Next.js
+React
+TypeScript
+Tailwind CSS
 ```
 
-Responsibilities:
-
-- Map
-- Location selection
-- Radius selection
-- Business results
-- Lead table
-- CRM
-- Dashboard
-- Project management
-
----
-
 ## Backend
-
-Recommended for this project:
 
 ```text
 Python
 FastAPI
+Pydantic
 ```
-
-Python is useful because the platform may eventually include:
-
-- Web analysis
-- Data processing
-- Automated classification
-- Lead scoring
-- NLP/AI
-- Crawling/verification services
-
-Spring Boot is also a valid alternative if the team prefers Java.
-
----
 
 ## Database
 
@@ -607,69 +1171,117 @@ Spring Boot is also a valid alternative if the team prefers Java.
 PostgreSQL
 ```
 
-Suggested entities:
+For geographic queries at scale, consider:
 
 ```text
-User
-Business
-BusinessLocation
-Website
-WebsiteAnalysis
-Lead
-LeadActivity
-Call
-FollowUp
-Client
-Project
-Developer
-Quotation
+PostGIS
 ```
 
----
-
-## Maps / Business Discovery
-
-Use a legitimate maps/business-data API or licensed provider.
-
-Potential sources include:
-
-- Google Maps Platform / Places
-- OpenStreetMap
-- Other licensed business-data providers
-
-The exact provider should be selected based on coverage, pricing, API capabilities and commercial usage terms.
-
-The product should not depend on unauthorized scraping.
-
----
-
-## Excel
-
-Use:
+## Background Processing
 
 ```text
-Python
+Redis
+Celery / RQ
+```
+
+## Browser Automation
+
+```text
+Playwright
+Chromium
+```
+
+Only for permitted verification/enrichment tasks.
+
+## Data Processing
+
+```text
 pandas
 openpyxl
 ```
 
-Flow:
+## Deployment
 
 ```text
+Docker
+Linux VPS / Cloud
+Nginx
 PostgreSQL
-    ↓
-Lead filtering
-    ↓
-Excel generation
-    ↓
-.xlsx
+Redis
 ```
 
 ---
 
-# 15. Example End-to-End Scenario
+# 34. Backend Structure
 
-### Input
+```text
+backend/
+└── app/
+    ├── api/
+    ├── models/
+    ├── schemas/
+    ├── services/
+    │   ├── location/
+    │   ├── discovery/
+    │   │   ├── base.py
+    │   │   ├── places.py
+    │   │   ├── osm.py
+    │   │   └── licensed_provider.py
+    │   ├── normalization/
+    │   ├── deduplication/
+    │   ├── geo/
+    │   ├── verification/
+    │   ├── website/
+    │   ├── scoring/
+    │   └── crm/
+    ├── workers/
+    └── main.py
+```
+
+Browser worker:
+
+```text
+browser-worker/
+├── scanners/
+├── verifiers/
+├── playwright/
+└── workers/
+```
+
+---
+
+# 35. API Design
+
+Possible endpoints:
+
+```text
+POST /api/scans
+GET  /api/scans/{id}
+GET  /api/scans/{id}/businesses
+
+GET  /api/businesses
+GET  /api/businesses/{id}
+
+POST /api/businesses/{id}/verify
+POST /api/businesses/{id}/analyze-website
+
+GET  /api/leads
+GET  /api/leads/{id}
+PATCH /api/leads/{id}
+
+POST /api/leads/{id}/activities
+POST /api/leads/{id}/follow-ups
+
+POST /api/leads/{id}/convert
+
+GET /api/exports/leads.xlsx
+```
+
+---
+
+# 36. Example End-to-End Scan
+
+Input:
 
 ```text
 Location:
@@ -682,298 +1294,438 @@ Categories:
 Restaurants + Cafes + Garages + Salons
 ```
 
-### Discovery
+Discovery:
 
 ```text
-247 businesses found
+Source A → 160
+Source B → 91
+Source C → 74
 ```
 
-### Digital Presence Analysis
+Merge:
 
 ```text
-63 businesses → No website
-41 businesses → Existing but weak website
-143 businesses → Good/acceptable web presence
+325 raw records
 ```
 
-### Lead Qualification
+Deduplicate:
 
 ```text
-104 potential opportunities
-37 high-priority leads
+248 unique businesses
 ```
 
-### Sales
+Geographic validation:
 
-Salesperson contacts the 37 high-priority businesses.
+```text
+213 within 1 km
+```
+
+Verification:
+
+```text
+205 sufficiently verified
+```
+
+Digital analysis:
+
+```text
+61 no website
+39 weak website
+105 acceptable website
+```
+
+Lead scoring:
+
+```text
+35 high priority
+31 medium priority
+34 lower priority
+```
+
+Sales:
+
+```text
+35 high-priority leads
+       ↓
+Calls
+       ↓
+Interested businesses
+       ↓
+Requirements
+       ↓
+Quotes
+       ↓
+Clients
+```
+
+---
+
+# 37. Accuracy Strategy
+
+Optimize for:
+
+```text
+Coverage
++
+Correctness
++
+Deduplication
++
+Geographic accuracy
++
+Business identity verification
++
+Freshness
+```
+
+Not merely:
+
+```text
+Number of businesses found
+```
 
 Example:
 
 ```text
-Patel Auto Garage
-      ↓
-Contacted
-      ↓
-Interested
-      ↓
-Requirements collected
-      ↓
-Quotation ₹25,000
-      ↓
-Accepted
-      ↓
-Client
+200 accurate businesses
 ```
 
-### Development
+is more valuable than:
 
 ```text
-Developer assigned
-      ↓
-Website design
-      ↓
-Development
-      ↓
-Testing
-      ↓
-Client review
-      ↓
-Launch
+500 records containing duplicates,
+wrong locations and unrelated businesses.
 ```
 
 ---
 
-# 16. What Makes This Project Different
+# 38. Source Reliability
 
-The project is not simply:
+Track source quality.
 
-> "Find businesses without websites."
-
-It combines multiple stages:
+Example:
 
 ```text
-GEOLOCATION
-     +
-BUSINESS DISCOVERY
-     +
-DIGITAL PRESENCE ANALYSIS
-     +
-LEAD SCORING
-     +
-CRM
-     +
-SALES PIPELINE
-     +
-CLIENT MANAGEMENT
-     +
-PROJECT MANAGEMENT
+Source A
+Coverage: High
+Phone accuracy: High
+
+Source B
+Coverage: Medium
+Address accuracy: High
+
+Source C
+Coverage: Medium
+Website accuracy: Medium
 ```
 
-This makes it a realistic business-oriented software platform.
+Useful internal metrics:
+
+```text
+Discovery contribution
+Duplicate rate
+Missing-field rate
+Verification agreement
+```
 
 ---
 
-# 17. Future Features
+# 39. Cost Optimization
 
-Possible future versions can include:
+Do not necessarily run every expensive source for every scan.
 
-### AI Lead Qualification
-
-AI can analyze a business and estimate:
+Possible strategy:
 
 ```text
-Website Opportunity
-Customer Acquisition Opportunity
-Digital Presence Quality
-Likely Website Requirements
-Lead Priority
+Low-cost sources
+       ↓
+Merge + Deduplicate
+       ↓
+Identify missing fields / uncertain records
+       ↓
+Use expensive source for targeted verification
 ```
 
-### Automatic Website Audit
-
-Generate:
-
-```text
-Website Score: 42/100
-
-Problems:
-- Poor mobile experience
-- No booking
-- No clear CTA
-- Slow loading
-- Missing service pages
-```
-
-This can be shown to the business owner as part of the sales pitch.
-
-### Lead Deduplication
-
-Prevent the same business from appearing multiple times when different searches overlap.
-
-### Multi-Area Campaigns
-
-```text
-Campaign:
-Gandhinagar - Sector 5
-
-Areas:
-GH5
-GH6
-GH7
-Infocity
-Nearby sectors
-```
-
-### Team Management
-
-```text
-Salesperson A → 50 leads
-Salesperson B → 40 leads
-Developer A → 5 projects
-Developer B → 4 projects
-```
-
-### Analytics
-
-Track:
-
-```text
-Area → Businesses → Leads → Calls → Interested → Clients → Revenue
-```
-
-This lets you identify which geographic areas produce the most business.
+This can reduce API costs.
 
 ---
 
-# 18. Important Data and Compliance Principles
+# 40. Security
 
-The platform should:
+Include:
 
-- Prefer business/public contact information.
-- Use APIs and data sources according to their terms.
-- Avoid unauthorized scraping.
+```text
+Authentication
+Authorization
+API key protection
+Rate limiting
+Input validation
+Encrypted secrets
+Database access controls
+Audit logs
+```
+
+External provider API keys must never be exposed in the frontend.
+
+---
+
+# 41. Legal / Data Principles
+
+The system should:
+
+- Prefer legitimate APIs and licensed business-data providers.
+- Use business/public contact information appropriately.
+- Follow the terms of each data provider.
+- Store only information necessary for the workflow.
+- Provide suitable correction/deletion controls.
 - Avoid guessing owner identities.
-- Store only information necessary for the business workflow.
-- Provide appropriate controls for deleting or correcting lead data.
-- Respect applicable privacy, communications and data-protection requirements.
-- Clearly distinguish verified information from inferred or unverified information.
+- Avoid unauthorized scraping.
+- Never bypass CAPTCHA, access controls, or anti-bot protections.
+- Respect applicable privacy and communications requirements.
+
+Commercial deployment should include a review of provider terms, licensing, privacy obligations, and outreach rules.
 
 ---
 
-# 19. MVP Definition
+# 42. Development Roadmap
 
-The first version should be intentionally small.
-
-### MVP Features
+## Phase 1 — Core Discovery
 
 ```text
-1. Select location
-2. Select radius
-3. Select business categories
-4. Discover businesses
-5. Check website presence
-6. Filter businesses without websites
-7. Store leads
-8. Display leads in dashboard
-9. Change lead status
-10. Add notes
-11. Export Excel
+1. Location search
+2. Radius selection
+3. Category selection
+4. One business-data source
+5. Normalization
+6. PostgreSQL
+7. Geographic validation
+8. Basic business list
 ```
 
-Do NOT initially build:
+## Phase 2 — Multi-Source
 
 ```text
-AI
-Complex CRM
-Automatic calling
-Automatic WhatsApp messaging
-Full project management
-Advanced website scoring
+1. Source adapter interface
+2. Second data source
+3. Third data source
+4. Result merging
+5. Deduplication
+6. Source evidence
+7. Coverage metrics
 ```
 
-Build the core pipeline first.
-
----
-
-# 20. Final Product Vision
-
-The long-term vision is:
+## Phase 3 — Digital Presence
 
 ```text
-                 LOCAL BUSINESS
-                       ^
-                       |
-                 Website / App
-                       |
-                  YOUR TEAM
-                       ^
-                       |
-                  PROJECT CRM
-                       ^
-                       |
-                   SALES CRM
-                       ^
-                       |
-                 LEAD SCORING
-                       ^
-                       |
-             DIGITAL PRESENCE
-                  ANALYSIS
-                       ^
-                       |
-              BUSINESS DISCOVERY
-                       ^
-                       |
-                 GEO LOCATION
+1. Website discovery
+2. Website verification
+3. Website quality analysis
+4. Data confidence score
+5. Opportunity score
 ```
 
-A user should be able to enter:
-
-> **"Find businesses within 1 km of GH5 Circle that are likely to need a website."**
-
-And the platform should transform that request into:
-
-> **A ranked, actionable list of business-development opportunities.**
-
----
-
-# 21. One-Line Description
-
-**LocalLead is a geo-targeted business lead-generation platform that discovers local businesses, identifies gaps in their digital presence, qualifies sales opportunities, and manages the journey from first contact to website/app development.**
-
----
-
-# 22. Name
-
-### Recommended Name: LOCALLEAD
-
-**Meaning:**
-
-- **Local** → targets businesses within a geographic area.
-- **Lead** → converts discovered businesses into sales opportunities.
-
-It is short, understandable and directly communicates the platform's purpose.
-
-Possible alternatives:
+## Phase 4 — Browser Worker
 
 ```text
-GeoLead
-BizRadar
-LeadRadius
-LocalRadar
-BizScout
-WebScout
-AreaLead
-BizHunt
-LocalScout
-DigitalScout
+1. Job queue
+2. Playwright worker
+3. Chromium-based permitted verification
+4. Enrichment
+5. Retry/error handling
 ```
 
-**Best overall choice: LocalLead**
+## Phase 5 — CRM
+
+```text
+1. Lead statuses
+2. Call notes
+3. Follow-ups
+4. Lead activities
+5. Quotations
+6. Client conversion
+```
+
+## Phase 6 — Business Platform
+
+```text
+1. Project management
+2. Developer assignment
+3. Revenue analytics
+4. Re-scans
+5. Change detection
+6. AI-assisted analysis
+```
 
 ---
 
-## Product Flow in One Line
+# 43. MVP Scope
 
-**Area → Businesses → Digital Presence → Opportunities → Leads → Clients → Projects → Revenue**
+Do not build everything initially.
 
+The first useful version should contain:
+
+```text
+✓ Location search
+✓ Radius selection
+✓ Category selection
+✓ Multi-source discovery
+✓ Normalization
+✓ Deduplication
+✓ Geographic validation
+✓ PostgreSQL
+✓ Basic website detection
+✓ Lead list
+✓ Excel export
+```
+
+Then add verification, website analysis and CRM.
+
+---
+
+# 44. Most Important Architecture Decisions
+
+### 1. PostgreSQL is the source of truth
+
+Not Excel.
+
+### 2. Multiple sources are used for discovery
+
+Not one provider.
+
+### 3. Radius is independently validated
+
+Do not blindly trust "nearby" search results.
+
+### 4. Deduplication happens before lead scoring
+
+Otherwise one business can become multiple leads.
+
+### 5. Website existence and website quality are different
+
+A poor website can still be a valuable opportunity.
+
+### 6. Data confidence and sales opportunity are different
+
+One measures reliability; the other measures commercial potential.
+
+### 7. Chromium is a worker
+
+It is not the foundation of the platform.
+
+### 8. Evidence and timestamps are stored
+
+Every important verification should be auditable and re-checkable.
+
+---
+
+# 45. Final Architecture
+
+```text
+                         LOCALLEAD
+                             │
+                             ▼
+                  ┌─────────────────────┐
+                  │ Location Selection  │
+                  │ GH5 + 1 km          │
+                  └──────────┬──────────┘
+                             ▼
+                  ┌─────────────────────┐
+                  │ Scan Orchestrator   │
+                  └──────────┬──────────┘
+                             │
+          ┌──────────────────┼──────────────────┐
+          ▼                  ▼                  ▼
+     Places/API             OSM          Licensed Sources
+          │                  │                  │
+          └──────────────────┼──────────────────┘
+                             ▼
+                    Normalize Results
+                             ▼
+                       Deduplicate
+                             ▼
+                     Geo Validation
+                             ▼
+                    Business Verification
+                             │
+                    ┌────────┴────────┐
+                    ▼                 ▼
+             Direct/API Checks   Playwright/Chromium
+                    │                 │
+                    └────────┬────────┘
+                             ▼
+                    Website Discovery
+                             ▼
+                     Website Analysis
+                             ▼
+                       Lead Scoring
+                             │
+                             ▼
+                         PostgreSQL
+                             │
+                ┌────────────┼────────────┐
+                ▼            ▼            ▼
+            Dashboard       CRM         Excel
+                             │
+                             ▼
+                          Sales
+                             │
+                             ▼
+                         Quotation
+                             │
+                             ▼
+                           Client
+                             │
+                             ▼
+                          Project
+                             │
+                             ▼
+                        Website/App
+```
+
+---
+
+# 46. Final Product Definition
+
+**LocalLead is a multi-source, geo-targeted business intelligence and lead-generation platform that discovers local businesses, validates their location and identity, analyzes their digital presence, identifies website/application opportunities, scores those opportunities, and manages the journey from business discovery to sales, client conversion and development project.**
+
+## Product Flow
+
+```text
+AREA
+ ↓
+MULTI-SOURCE DISCOVERY
+ ↓
+NORMALIZATION
+ ↓
+DEDUPLICATION
+ ↓
+GEO VALIDATION
+ ↓
+BUSINESS VERIFICATION
+ ↓
+WEBSITE DISCOVERY
+ ↓
+WEBSITE ANALYSIS
+ ↓
+LEAD SCORING
+ ↓
+CRM
+ ↓
+SALES
+ ↓
+CLIENT
+ ↓
+DEVELOPMENT PROJECT
+ ↓
+REVENUE
+```
+
+## Core Philosophy
+
+The goal is not:
+
+> "Find as many businesses as possible."
+
+The goal is:
+
+> **"Find the most useful, accurate, verified and commercially relevant businesses within a selected geographic area."**

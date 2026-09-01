@@ -1,7 +1,7 @@
 import React from 'react';
 import { MapPin, Table, Kanban, FolderKanban, BarChart3, Sparkles, Download } from 'lucide-react';
 
-export default function Navbar({ activeTab, setActiveTab, stats, onExport }) {
+export default function Navbar({ activeTab, setActiveTab, stats, onExport, searchLocation }) {
   const tabs = [
     { id: 'map', label: 'Geo-Map Discovery', icon: MapPin },
     { id: 'table', label: 'Lead Qualification Table', icon: Table },
@@ -71,7 +71,7 @@ export default function Navbar({ activeTab, setActiveTab, stats, onExport }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
         <div style={{ display: 'flex', gap: '12px', fontSize: '0.8rem' }}>
           <div style={{ padding: '4px 10px', background: 'rgba(255,255,255,0.05)', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.08)' }}>
-            <span style={{ color: 'var(--text-muted)' }}>Leads: </span>
+            <span style={{ color: 'var(--text-muted)' }}>Total Leads: </span>
             <strong style={{ color: '#22d3ee' }}>{stats?.discovery?.total_leads || 0}</strong>
           </div>
           <div style={{ padding: '4px 10px', background: 'rgba(244, 63, 94, 0.1)', borderRadius: '6px', border: '1px solid rgba(244, 63, 94, 0.2)' }}>
@@ -80,9 +80,13 @@ export default function Navbar({ activeTab, setActiveTab, stats, onExport }) {
           </div>
         </div>
 
-        <button className="btn-success" onClick={onExport} title="Export Leads Database to Excel (.xlsx)">
+        <button 
+          className="btn-success" 
+          onClick={onExport} 
+          title={searchLocation ? `Export leads for "${searchLocation}" to Excel (.xlsx)` : "Export Leads Database to Excel (.xlsx)"}
+        >
           <Download size={16} />
-          Export Excel
+          Export Excel ({searchLocation ? searchLocation.split(',')[0] : 'Search'})
         </button>
       </div>
     </header>

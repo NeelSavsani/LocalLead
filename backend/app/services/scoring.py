@@ -1,49 +1,76 @@
 from typing import Dict, Any, Tuple
 
-def calculate_lead_score(business_info: Dict[str, Any], audit_info: Dict[str, Any]) -> Tuple[int, str]:
+def calculate_two_scores(business_info: Dict[str, Any], audit_info: Dict[str, Any]) -> Tuple[int, int, str, str]:
     """
-    Calculates overall lead priority score (0-100+) and priority level.
-    Returns (score, priority_level).
+    Calculates:
+    1. Data Confidence Score (0-100): Reliability & completeness of business information.
+    2. Sales Opportunity Score (0-100): Commercial potential for selling a web/app build.
+    3. Priority level (HIGH, MEDIUM, LOW)
+    4. Digital Presence Status (NO_WEBSITE, WEBSITE_POOR, WEBSITE_GOOD, WEBSITE_VERIFIED)
+    
+    Returns (data_confidence, opportunity_score, priority, digital_presence_status).
     """
-    score = 0
+    # 1. Calculate Data Confidence Score
+    confidence = 0
+    if business_info.get("name"):
+        confidence += 20
+    if business_info.get("phone"):
+        confidence += 25  # Verified direct contact number
+    if business_info.get("address"):
+        confidence += 20
+    if business_info.get("latitude") and business_info.get("longitude"):
+        confidence += 20
 
-    # Website status weighting
+    # Multi-source validation bonus
+    sources = business_info.get("sources", ["openstreetmap"])
+    if len(sources) > 1:
+        confidence += 15
+    else:
+        confidence += 5
+
+    data_confidence = min(100, confidence)
+
+    # 2. Calculate Sales Opportunity Score
+    opp_score = 0
     has_web = audit_info.get("has_website", False)
-    opp_score = audit_info.get("opportunity_score", 0)
+    web_opp = audit_info.get("opportunity_score", 0)
 
     if not has_web:
-        score += 50
+        opp_score += 50
+        digital_presence_status = "NO_WEBSITE"
     else:
-        # Scale opportunity score (0 to 35 pts)
-        score += int(opp_score * 0.35)
+        opp_score += int(web_opp * 0.40)
+        if web_opp >= 50:
+            digital_presence_status = "WEBSITE_POOR"
+        elif audit_info.get("is_https") and audit_info.get("is_mobile_friendly"):
+            digital_presence_status = "WEBSITE_GOOD"
+        else:
+            digital_presence_status = "WEBSITE_FOUND"
 
-    # Online booking & lead CTA signals
     if not audit_info.get("has_online_booking", True):
-        score += 10
+        opp_score += 10
     if not audit_info.get("has_contact_form", True):
-        score += 10
+        opp_score += 10
 
-    # Contactability bonus
     if business_info.get("phone"):
-        score += 15  # Easily contactable by sales rep
+        opp_score += 15  # Easily contactable by sales rep
     if business_info.get("address"):
-        score += 5
+        opp_score += 5
 
-    # Distance factor (closer businesses are easier to visit in person)
     dist_m = business_info.get("distance_meters", 1000)
     if dist_m <= 500:
-        score += 10
+        opp_score += 10
     elif dist_m <= 1500:
-        score += 5
+        opp_score += 5
 
-    # Cap score at 100 max
-    final_score = min(100, score)
+    opportunity_score = min(100, opp_score)
 
-    if final_score >= 70:
+    # Calculate priority using two-score matrix
+    if opportunity_score >= 70 and data_confidence >= 50:
         priority = "HIGH"
-    elif final_score >= 45:
+    elif opportunity_score >= 45:
         priority = "MEDIUM"
     else:
         priority = "LOW"
 
-    return final_score, priority
+    return data_confidence, opportunity_score, priority, digital_presence_status
