@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Filter, Phone, Edit, Globe, ShieldCheck, AlertTriangle, X } from 'lucide-react';
+import { Search, Filter, Phone, Edit, Globe, ShieldCheck, AlertTriangle, X, ExternalLink } from 'lucide-react';
 
 export default function LeadsTableView({ leads, onUpdateLead, onRefresh, onExport }) {
   const [priorityFilter, setPriorityFilter] = useState('ALL');
@@ -9,6 +9,7 @@ export default function LeadsTableView({ leads, onUpdateLead, onRefresh, onExpor
 
   // Form states for modal
   const [modalStatus, setModalStatus] = useState('');
+  const [modalPhone, setModalPhone] = useState('');
   const [modalOwner, setModalOwner] = useState('');
   const [modalNotes, setModalNotes] = useState('');
   const [modalBudget, setModalBudget] = useState('');
@@ -29,6 +30,7 @@ export default function LeadsTableView({ leads, onUpdateLead, onRefresh, onExpor
   const openEditModal = (lead) => {
     setActiveModalLead(lead);
     setModalStatus(lead.status || 'NEW');
+    setModalPhone(lead.business.phone || '');
     setModalOwner(lead.owner_name || '');
     setModalNotes(lead.call_notes || '');
     setModalBudget(lead.estimated_budget || '');
@@ -41,6 +43,7 @@ export default function LeadsTableView({ leads, onUpdateLead, onRefresh, onExpor
 
     onUpdateLead(activeModalLead.id, {
       status: modalStatus,
+      phone: modalPhone,
       owner_name: modalOwner,
       call_notes: modalNotes,
       estimated_budget: modalBudget,
@@ -140,6 +143,7 @@ export default function LeadsTableView({ leads, onUpdateLead, onRefresh, onExpor
               filteredLeads.map((l) => {
                 const b = l.business;
                 const w = b.analysis;
+                const bGmapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(b.name + ' ' + (b.address !== 'Address Listed on Map' ? b.address : b.search_location))}&center=${b.latitude},${b.longitude}`;
 
                 return (
                   <tr key={l.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', transition: 'background 0.2s' }}>
@@ -148,7 +152,18 @@ export default function LeadsTableView({ leads, onUpdateLead, onRefresh, onExpor
                     </td>
                     <td style={{ padding: '14px 16px', fontWeight: 600, color: '#fff' }}>
                       {b.name}
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginTop: '2px' }}>{b.address}</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span>{b.address}</span>
+                        <a
+                          href={bGmapsUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ color: '#818cf8', display: 'inline-flex', alignItems: 'center', gap: '2px', textDecoration: 'none', fontWeight: 600 }}
+                          title="View business details on Google Maps"
+                        >
+                          🗺️ Maps <ExternalLink size={11} />
+                        </a>
+                      </div>
                     </td>
                     <td style={{ padding: '14px 16px', color: 'var(--text-muted)' }}>{b.category}</td>
                     <td style={{ padding: '14px 16px', color: 'var(--text-muted)' }}>
@@ -158,7 +173,7 @@ export default function LeadsTableView({ leads, onUpdateLead, onRefresh, onExpor
                           {b.phone}
                         </div>
                       ) : (
-                        <span style={{ color: 'var(--text-dim)' }}>Not Listed</span>
+                        <span style={{ color: '#fb7185', fontSize: '0.8rem' }}>No Phone Listed</span>
                       )}
                       <div style={{ fontSize: '0.7rem', color: '#94a3b8', marginTop: '2px' }}>
                         Sources: {b.source_providers || 'openstreetmap'}
@@ -229,11 +244,44 @@ export default function LeadsTableView({ leads, onUpdateLead, onRefresh, onExpor
             <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '4px', color: '#fff' }}>
               Manage Lead: {activeModalLead.business.name}
             </h3>
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '20px' }}>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '16px' }}>
               Lead ID: {activeModalLead.lead_code} | Confidence: {activeModalLead.data_confidence}% | Opp. Score: {activeModalLead.score} ({activeModalLead.priority})
             </p>
 
+            <div style={{ marginBottom: '16px' }}>
+              <a
+                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(activeModalLead.business.name + ' ' + activeModalLead.business.address)}&center=${activeModalLead.business.latitude},${activeModalLead.business.longitude}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  background: 'linear-gradient(135deg, #4f46e5 0%, #0284c7 100%)',
+                  color: '#ffffff',
+                  fontSize: '0.8rem',
+                  fontWeight: 600,
+                  textDecoration: 'none'
+                }}
+              >
+                🗺️ Open Details on Google Maps <ExternalLink size={13} />
+              </a>
+            </div>
+
             <form onSubmit={handleModalSave} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div>
+                <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>PHONE NUMBER</label>
+                <input
+                  type="text"
+                  value={modalPhone}
+                  onChange={(e) => setModalPhone(e.target.value)}
+                  placeholder="e.g. 070960 83187"
+                  style={{ width: '100%', padding: '8px', borderRadius: '6px', background: 'rgba(0,0,0,0.3)', color: '#fff', border: '1px solid var(--border-subtle)' }}
+                />
+              </div>
+
               <div>
                 <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>SALES STATUS</label>
                 <select
@@ -256,7 +304,7 @@ export default function LeadsTableView({ leads, onUpdateLead, onRefresh, onExpor
                   type="text"
                   value={modalOwner}
                   onChange={(e) => setModalOwner(e.target.value)}
-                  placeholder="e.g. Mr. Rajesh Patel"
+                  placeholder="e.g. Dr. Payal / Owner"
                   style={{ width: '100%', padding: '8px', borderRadius: '6px', background: 'rgba(0,0,0,0.3)', color: '#fff', border: '1px solid var(--border-subtle)' }}
                 />
               </div>

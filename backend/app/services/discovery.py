@@ -36,9 +36,8 @@ def parse_google_maps_url(url: str) -> tuple[float, float] | None:
         return None
 
     url_clean = url.strip()
-    headers = {"User-Agent": "LocalLeadApp/1.0 (contact@locallead.app)"}
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
 
-    # Resolve short share URLs (goo.gl / maps.app.goo.gl)
     if 'goo.gl' in url_clean or 'maps.app' in url_clean:
         try:
             resp = requests.head(url_clean, headers=headers, allow_redirects=True, timeout=5)
@@ -76,12 +75,10 @@ def geocode_location(location_str: str) -> tuple[float, float, str, bool]:
     """
     raw_query = location_str.strip()
 
-    # Step 0: Check if input is a Google Maps URL or raw coordinates
     gmaps_coords = parse_google_maps_url(raw_query)
     if gmaps_coords:
         return gmaps_coords[0], gmaps_coords[1], f"Pin Location ({gmaps_coords[0]:.4f}, {gmaps_coords[1]:.4f})", True
 
-    # Step 1: Check Presets
     norm_query = re.sub(r'\bracecourse\b', 'race course', raw_query, flags=re.IGNORECASE).strip()
     q_lower = norm_query.lower()
 
@@ -92,7 +89,6 @@ def geocode_location(location_str: str) -> tuple[float, float, str, bool]:
     headers = {"User-Agent": "LocalLeadApp/1.0 (contact@locallead.app)"}
     nominatim_url = "https://nominatim.openstreetmap.org/search"
 
-    # Step 2: Direct Nominatim lookup
     for search_term in [norm_query, raw_query, f"{norm_query}, India"]:
         try:
             resp = requests.get(nominatim_url, params={"q": search_term, "format": "json", "limit": 1}, headers=headers, timeout=5)
@@ -102,7 +98,6 @@ def geocode_location(location_str: str) -> tuple[float, float, str, bool]:
         except Exception:
             pass
 
-    # Step 3: Progressive right-to-left word truncation
     words = norm_query.split()
     while len(words) > 1:
         words.pop()
@@ -118,7 +113,6 @@ def geocode_location(location_str: str) -> tuple[float, float, str, bool]:
         except Exception:
             pass
 
-    # Step 4: Smart City Context Matching
     if "rajkot" in q_lower:
         return 22.3039, 70.8022, f"{raw_query} (Rajkot, Gujarat)", True
     elif "gandhinagar" in q_lower or "sector" in q_lower:
@@ -128,7 +122,6 @@ def geocode_location(location_str: str) -> tuple[float, float, str, bool]:
     elif "ahmedabad" in q_lower:
         return 23.0225, 72.5714, f"{raw_query} (Ahmedabad Region)", True
 
-    # Location un-geocodable: Return resolved = False (NO hardcoded GH5 default)
     return 0.0, 0.0, raw_query, False
 
 def calculate_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
@@ -141,6 +134,55 @@ def calculate_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> fl
     a = math.sin(delta_phi / 2)**2 + math.cos(phi1) * math.cos(phi2) * math.sin(delta_lambda / 2)**2
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
     return round(R * c, 1)
+
+def enrich_phone_number(name: str, location_name: str) -> str | None:
+    """
+    Multi-strategy phone enrichment engine.
+    Fetches real business contact phone numbers when omitted from OpenStreetMap tags.
+    """
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept-Language": "en-US,en;q=0.9"
+    }
+
+    clean_loc = location_name.split(",")[0].strip()
+    q = requests.utils.quote(f"{name} {clean_loc} phone contact")
+
+    # Strategy 1: Google Search Places Snippet
+    try:
+        url1 = f"https://www.google.com/search?q={q}"
+        resp = requests.get(url1, headers=headers, timeout=5)
+        if resp.status_code == 200:
+            matches = re.findall(r'(?:(?:\+91[\s-]?)?0?[6-9]\d{4}[\s-]?\d{5}|0\d{2,4}[\s-]?\d{6,8})', resp.text)
+            for m in matches:
+                digits = re.sub(r'\D', '', m)
+                if len(digits) == 10 and digits[0] in '6789':
+                    return m
+                elif len(digits) == 11 and digits.startswith('0'):
+                    return m
+                elif len(digits) == 12 and digits.startswith('91'):
+                    return f"+{m.strip()}"
+    except Exception:
+        pass
+
+    # Strategy 2: Bing Places Snippet
+    try:
+        url2 = f"https://www.bing.com/search?q={q}"
+        resp = requests.get(url2, headers=headers, timeout=5)
+        if resp.status_code == 200:
+            matches = re.findall(r'(?:(?:\+91[\s-]?)?0?[6-9]\d{4}[\s-]?\d{5}|0\d{2,4}[\s-]?\d{6,8})', resp.text)
+            for m in matches:
+                digits = re.sub(r'\D', '', m)
+                if len(digits) == 10 and digits[0] in '6789':
+                    return m
+                elif len(digits) == 11 and digits.startswith('0'):
+                    return m
+                elif len(digits) == 12 and digits.startswith('91'):
+                    return f"+{m.strip()}"
+    except Exception:
+        pass
+
+    return None
 
 # ----------------------------------------------------
 # 1. SOURCE ADAPTER PATTERN
@@ -190,13 +232,15 @@ class OpenStreetMapAdapter:
                             if not any(sc.lower() in cat_formatted.lower() or cat_formatted.lower() in sc.lower() for sc in categories):
                                 continue
 
+                        phone = tags.get("phone") or tags.get("contact:phone") or tags.get("mobile")
+
                         results.append({
                             "source_provider": "openstreetmap",
                             "source_id": str(e.get("id")),
                             "name": name,
                             "category": cat_formatted,
                             "address": tags.get("addr:street") or tags.get("addr:full") or "Address Listed on Map",
-                            "phone": tags.get("phone") or tags.get("contact:phone") or tags.get("mobile"),
+                            "phone": phone,
                             "website": tags.get("website") or tags.get("contact:website") or tags.get("url"),
                             "latitude": lat,
                             "longitude": lon,
@@ -288,12 +332,12 @@ def deduplicate_results(raw_list: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 
 def discover_businesses(location_str: str, radius_km: float, selected_categories: List[str], gmaps_url: str = None) -> Dict[str, Any]:
     """
-    Multi-Source Business Discovery Pipeline with Google Maps URL support:
-    1. Resolve Location Coordinates (Supports Google Maps URLs or text)
-    2. If Unresolved: Returns location_resolved = False (NO GH5 FALLBACK)
-    3. Query Source Adapters
-    4. Merge & Deduplicate Results
-    5. Independent Geographic Radius Validation (distance <= radius)
+    Multi-Source Business Discovery Pipeline:
+    1. Resolve Location Coordinates
+    2. Query Source Adapters (OSM + Places)
+    3. Merge & Deduplicate Results
+    4. Independent Geographic Radius Validation
+    5. Contact Enrichment Engine for Phone Numbers
     """
     search_target = gmaps_url.strip() if (gmaps_url and gmaps_url.strip()) else location_str
     center_lat, center_lon, display_name, resolved_ok = geocode_location(search_target)
@@ -322,12 +366,19 @@ def discover_businesses(location_str: str, radius_km: float, selected_categories
     # 2. Deduplicate Across Sources
     merged_businesses = deduplicate_results(raw_results)
 
-    # 3. Independent Geographic Validation (distance <= radius)
+    # 3. Independent Geographic Validation & Contact Enrichment
     validated_businesses = []
     for b in merged_businesses:
         dist_m = calculate_distance(center_lat, center_lon, b["latitude"], b["longitude"])
         if dist_m <= radius_meters:
             b["distance_meters"] = dist_m
+
+            # Contact enrichment: if phone is missing, run multi-strategy enrichment
+            if not b.get("phone"):
+                enriched_ph = enrich_phone_number(b["name"], display_name)
+                if enriched_ph:
+                    b["phone"] = enriched_ph
+
             validated_businesses.append(b)
 
     # Sort by distance

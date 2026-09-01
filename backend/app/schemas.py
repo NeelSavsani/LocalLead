@@ -59,7 +59,8 @@ class LeadOut(BaseModel):
         from_attributes = True
 
 class LeadUpdateStatus(BaseModel):
-    status: str
+    status: Optional[str] = None
+    phone: Optional[str] = None
     call_notes: Optional[str] = None
     owner_name: Optional[str] = None
     estimated_budget: Optional[str] = None

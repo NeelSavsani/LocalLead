@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, MapPin, Layers, Globe, Phone, ShieldCheck, CheckCircle2, Sparkles, Navigation, Link as LinkIcon, AlertTriangle, Eye } from 'lucide-react';
+import { Search, MapPin, Layers, Globe, Phone, ShieldCheck, CheckCircle2, Sparkles, Navigation, Link as LinkIcon, AlertTriangle, ExternalLink } from 'lucide-react';
 import L from 'leaflet';
 
 // Fix default Leaflet icon paths
@@ -82,7 +82,7 @@ export default function MapDiscoveryView({ leads, mapCenter, onScan, loading, se
     }).addTo(map);
   }, [mapStyle]);
 
-  // Pan, re-center map, update radius circle & render standalone SEARCH CENTER PIN (No blue background)
+  // Pan, re-center map, update radius circle & render standalone SEARCH CENTER PIN
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map || !mapCenter) return;
@@ -123,11 +123,13 @@ export default function MapDiscoveryView({ leads, mapCenter, onScan, loading, se
       html: centerIconHtml,
       className: 'clean-standalone-pin',
       iconSize: [34, 34],
-      iconAnchor: [17, 32] // Anchor tip of pin to coordinates
+      iconAnchor: [17, 32]
     });
 
+    const gmapsSearchUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(searchLocation)}&center=${mapCenter.latitude},${mapCenter.longitude}`;
+
     const centerPopup = `
-      <div style="padding: 4px;">
+      <div style="padding: 4px; min-width: 200px;">
         <strong style="font-size: 0.95rem; color: #818cf8;">📍 Search Target Origin</strong>
         <div style="font-size: 0.82rem; color: #f8fafc; margin-top: 4px; font-weight: 600;">${searchLocation}</div>
         <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 2px;">
@@ -135,6 +137,23 @@ export default function MapDiscoveryView({ leads, mapCenter, onScan, loading, se
         </div>
         <div style="font-size: 0.75rem; color: #38bdf8; margin-top: 4px;">
           Radius: ${radius} km (${radius * 1000}m)
+        </div>
+        <div style="margin-top: 8px;">
+          <a href="${gmapsSearchUrl}" target="_blank" rel="noopener noreferrer" style="
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 10px;
+            border-radius: 6px;
+            background: rgba(99, 102, 241, 0.25);
+            border: 1px solid rgba(99, 102, 241, 0.5);
+            color: #a5b4fc;
+            font-size: 0.76rem;
+            font-weight: 600;
+            text-decoration: none;
+          ">
+            🗺️ View Target on Google Maps ↗
+          </a>
         </div>
       </div>
     `;
@@ -190,8 +209,10 @@ export default function MapDiscoveryView({ leads, mapCenter, onScan, loading, se
           iconAnchor: [14, 14]
         });
 
+        const bGmapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(b.name + ' ' + (b.address !== 'Address Listed on Map' ? b.address : searchLocation))}&center=${b.latitude},${b.longitude}`;
+
         const popupContent = `
-          <div style="min-width: 190px;">
+          <div style="min-width: 210px;">
             <strong style="font-size: 1rem; color: #f8fafc;">${b.name}</strong>
             <div style="font-size: 0.8rem; color: #94a3b8; margin-top: 2px;">${b.category} • ${b.distance_meters}m away</div>
             <div style="margin-top: 6px; font-size: 0.78rem; color: #38bdf8;">
@@ -201,6 +222,23 @@ export default function MapDiscoveryView({ leads, mapCenter, onScan, loading, se
               ${!w || !w.has_website ? '❌ No Website (High Opportunity)' : `⚠️ Opportunity Score: ${w.opportunity_score}/100`}
             </div>
             <div style="margin-top: 6px; font-size: 0.8rem; color: #cbd5e1;">${b.phone || 'No phone listed'}</div>
+            <div style="margin-top: 10px;">
+              <a href="${bGmapsUrl}" target="_blank" rel="noopener noreferrer" style="
+                display: inline-flex;
+                align-items: center;
+                gap: 5px;
+                padding: 6px 12px;
+                border-radius: 6px;
+                background: linear-gradient(135deg, #4f46e5 0%, #0284c7 100%);
+                color: #ffffff;
+                font-size: 0.78rem;
+                font-weight: 600;
+                text-decoration: none;
+                box-shadow: 0 2px 8px rgba(79, 70, 229, 0.4);
+              ">
+                🗺️ View on Google Maps ↗
+              </a>
+            </div>
           </div>
         `;
 
@@ -211,7 +249,7 @@ export default function MapDiscoveryView({ leads, mapCenter, onScan, loading, se
         markersGroupRef.current.addLayer(marker);
       });
     }
-  }, [leads]);
+  }, [leads, searchLocation]);
 
   const toggleCategory = (cat) => {
     if (selectedCategories.includes(cat)) {
@@ -484,6 +522,7 @@ export default function MapDiscoveryView({ leads, mapCenter, onScan, loading, se
             const b = l.business;
             const w = b.analysis;
             const isSelected = selectedLead?.id === l.id;
+            const bGmapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(b.name + ' ' + (b.address !== 'Address Listed on Map' ? b.address : searchLocation))}&center=${b.latitude},${b.longitude}`;
 
             return (
               <div
@@ -530,6 +569,32 @@ export default function MapDiscoveryView({ leads, mapCenter, onScan, loading, se
                       <span>{b.phone}</span>
                     </div>
                   )}
+                </div>
+
+                {/* View on Google Maps Button */}
+                <div style={{ marginTop: '10px' }}>
+                  <a
+                    href={bGmapsUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                      padding: '5px 10px',
+                      borderRadius: '6px',
+                      background: 'rgba(99, 102, 241, 0.2)',
+                      border: '1px solid rgba(99, 102, 241, 0.4)',
+                      color: '#a5b4fc',
+                      fontSize: '0.76rem',
+                      fontWeight: 600,
+                      textDecoration: 'none',
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    🗺️ View on Google Maps <ExternalLink size={12} />
+                  </a>
                 </div>
 
                 {/* Opportunity note */}

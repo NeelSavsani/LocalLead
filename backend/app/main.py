@@ -11,7 +11,7 @@ from .schemas import (
     DiscoveryRequest, BusinessOut, LeadOut, LeadUpdateStatus,
     ProjectCreate, ProjectOut, ProjectUpdateStatus
 )
-from .services.discovery import discover_businesses
+from .services.discovery import discover_businesses, enrich_phone_number
 from .services.web_auditor import audit_website
 from .services.scoring import calculate_two_scores
 from .services.exporter import export_leads_to_excel
@@ -40,19 +40,17 @@ def read_root():
         "status": "online",
         "app": "LocalLead API — Multi-Source Engine",
         "version": "2.0.0",
-        "endpoints": ["/api/v1/discover", "/api/v1/leads", "/api/v1/export", "/api/v1/projects", "/api/v1/stats"]
+        "endpoints": ["/api/v1/discover", "/api/v1/leads", "/api/v1/export", "/api/v1/projects", "/api/v1/stats", "/api/v1/enrich-phones"]
     }
 
 @app.post("/api/v1/discover")
 def discover_and_qualify(req: DiscoveryRequest, db: Session = Depends(get_db)):
     """
     Search an area, discover businesses from multiple adapters, deduplicate records,
-    validate radius, perform website audits, score leads using Two-Score model, and save.
-    Supports location text OR Google Maps URL parsing.
+    validate radius, perform website audits & phone contact enrichment, score leads, and save.
     """
     results = discover_businesses(req.location, req.radius_km, req.categories or [], gmaps_url=req.gmaps_url)
     
-    # If location could not be geocoded or parsed, return location_resolved = False (NO GH5 FALLBACK)
     if not results.get("location_resolved", True):
         return {
             "search_location": results["search_location"],
@@ -74,6 +72,16 @@ def discover_and_qualify(req: DiscoveryRequest, db: Session = Depends(get_db)):
         ).first()
 
         if existing_b:
+            # If existing business record was missing a phone, update it with newly enriched phone!
+            if not existing_b.phone and b_data.get("phone"):
+                existing_b.phone = b_data["phone"]
+                db.commit()
+            elif not existing_b.phone:
+                enriched_ph = enrich_phone_number(existing_b.name, results["search_location"])
+                if enriched_ph:
+                    existing_b.phone = enriched_ph
+                    db.commit()
+
             lead = existing_b.lead
             if lead:
                 current_search_lead_ids.append(lead.id)
@@ -161,6 +169,23 @@ def discover_and_qualify(req: DiscoveryRequest, db: Session = Depends(get_db)):
         "leads": [LeadOut.model_validate(l) for l in scanned_leads]
     }
 
+@app.post("/api/v1/enrich-phones")
+def enrich_database_phones(db: Session = Depends(get_db)):
+    """Bulk enrich missing phone numbers for existing businesses stored in the database."""
+    businesses_without_phone = db.query(Business).filter(
+        (Business.phone == None) | (Business.phone == "") | (Business.phone == "Not Listed")
+    ).all()
+
+    enriched_count = 0
+    for b in businesses_without_phone:
+        ph = enrich_phone_number(b.name, b.search_location or b.address)
+        if ph:
+            b.phone = ph
+            enriched_count += 1
+
+    db.commit()
+    return {"status": "success", "total_checked": len(businesses_without_phone), "enriched_count": enriched_count}
+
 @app.get("/api/v1/leads", response_model=List[LeadOut])
 def get_leads(
     status: Optional[str] = None,
@@ -195,7 +220,7 @@ def get_leads(
 
 @app.put("/api/v1/leads/{lead_id}", response_model=LeadOut)
 def update_lead_status(lead_id: int, payload: LeadUpdateStatus, db: Session = Depends(get_db)):
-    """Update lead status, notes, budget, owner name, or next follow-up date."""
+    """Update lead status, phone number, notes, budget, owner name, or next follow-up date."""
     lead = db.query(Lead).filter(Lead.id == lead_id).first()
     if not lead:
         raise HTTPException(status_code=404, detail="Lead not found")
@@ -203,6 +228,8 @@ def update_lead_status(lead_id: int, payload: LeadUpdateStatus, db: Session = De
     old_status = lead.status
     if payload.status:
         lead.status = payload.status
+    if payload.phone is not None and lead.business:
+        lead.business.phone = payload.phone.strip()
     if payload.call_notes is not None:
         lead.call_notes = payload.call_notes
     if payload.owner_name is not None:
@@ -216,7 +243,7 @@ def update_lead_status(lead_id: int, payload: LeadUpdateStatus, db: Session = De
     act = LeadActivity(
         lead_id=lead.id,
         action_type="STATUS_UPDATE",
-        note=payload.call_notes or f"Updated status from {old_status} to {lead.status}.",
+        note=payload.call_notes or f"Updated lead status to {lead.status}.",
         status_changed_to=lead.status
     )
     db.add(act)

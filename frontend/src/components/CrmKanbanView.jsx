@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Phone, ArrowRight, CheckCircle2, UserCheck, DollarSign, FolderPlus, MessageSquare } from 'lucide-react';
+import { Phone, ArrowRight, CheckCircle2, UserCheck, DollarSign, FolderPlus, MessageSquare, ExternalLink } from 'lucide-react';
 
 const COLUMNS = [
   { id: 'NEW', title: 'New Leads', color: '#06b6d4' },
@@ -31,7 +31,7 @@ export default function CrmKanbanView({ leads, onUpdateLead, onConvertToProject 
     <div style={{ padding: '0 20px 20px 20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
       <div>
         <h2 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#fff' }}>Sales CRM Kanban Pipeline</h2>
-        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Drag leads between columns to update their sales status. Click 'Convert Project' on Won deals.</p>
+        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Drag leads between columns to update their sales status. Click 'Create Web Project' on Won deals.</p>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '16px', minHeight: 'calc(100vh - 200px)' }}>
@@ -73,6 +73,7 @@ export default function CrmKanbanView({ leads, onUpdateLead, onConvertToProject 
                 ) : (
                   columnLeads.map((l) => {
                     const b = l.business;
+                    const bGmapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(b.name + ' ' + (b.address !== 'Address Listed on Map' ? b.address : b.search_location))}&center=${b.latitude},${b.longitude}`;
 
                     return (
                       <div
@@ -97,6 +98,18 @@ export default function CrmKanbanView({ leads, onUpdateLead, onConvertToProject 
 
                         <h4 style={{ fontSize: '0.88rem', fontWeight: 700, color: '#fff', marginTop: '4px' }}>{b.name}</h4>
                         <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{b.category}</div>
+
+                        {/* View on Google Maps link */}
+                        <div style={{ marginTop: '4px' }}>
+                          <a
+                            href={bGmapsUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{ fontSize: '0.7rem', color: '#818cf8', fontWeight: 600, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '3px' }}
+                          >
+                            🗺️ Google Maps <ExternalLink size={10} />
+                          </a>
+                        </div>
 
                         {l.owner_name && (
                           <div style={{ fontSize: '0.72rem', color: '#38bdf8', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
