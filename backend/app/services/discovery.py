@@ -188,6 +188,51 @@ def enrich_phone_number(name: str, location_name: str) -> str | None:
 # 1. SOURCE ADAPTER PATTERN
 # ----------------------------------------------------
 
+CATEGORY_SYNONYMS = {
+    "garage / auto repair": ["garage", "auto", "car_repair", "car repair", "vehicle repair", "mechanic", "tyres", "workshop", "service center"],
+    "hospital": ["hospital", "medical center", "healthcare", "infirmary"],
+    "clinic & medical": ["clinic", "doctor", "dentist", "physiotherapist", "healthcare", "medical"],
+    "hostel": ["hostel", "dormitory", "student housing", "accommodation"],
+    "pg (paying guest)": ["pg", "paying guest", "hostel", "guest house", "guest_house", "boarding house", "dormitory"],
+    "small retailer / general store": ["shop", "retail", "store", "general", "convenience", "supermarket", "kirana", "kiosk", "bazaar", "provision", "grocery"],
+    "salon / saloon": ["salon", "saloon", "hairdresser", "barber", "beauty", "parlour", "parlor"],
+    "restaurant": ["restaurant", "dining", "diner", "eatery", "food"],
+    "cafe": ["cafe", "coffee", "cafeteria", "tea"],
+    "hotel & lodging": ["hotel", "motel", "lodging", "resort", "guest_house"],
+    "pharmacy / medical store": ["pharmacy", "chemist", "drugstore", "medical store"],
+    "gym & fitness center": ["gym", "fitness", "sports_centre", "workout", "health_club"],
+    "coaching & education": ["coaching", "school", "college", "tutoring", "education", "training"],
+    "bakery & sweets": ["bakery", "confectionery", "sweets", "cake", "pastry"],
+    "electronics & mobile shop": ["electronics", "mobile", "computer", "phone", "gadgets"],
+    "boutique & clothing": ["clothes", "fashion", "boutique", "tailor", "apparel", "clothing"],
+    "jewellery store": ["jewellery", "jewelry", "gold", "silver"],
+    "spa & wellness": ["spa", "wellness", "massage"],
+    "laundry & dry cleaning": ["laundry", "dry_cleaning", "dry cleaner"],
+    "real estate & agency": ["real estate", "estate_agent", "property", "agency"]
+}
+
+def is_category_match(cat_formatted: str, tags: dict, name: str, selected_categories: List[str]) -> bool:
+    if not selected_categories:
+        return True
+    
+    cat_lower = cat_formatted.lower()
+    name_lower = name.lower()
+    tags_str = " ".join([str(v).lower() for v in tags.values()])
+
+    for sc in selected_categories:
+        sc_lower = sc.lower()
+        # Direct substring match
+        if sc_lower in cat_lower or cat_lower in sc_lower or sc_lower in name_lower or sc_lower in tags_str:
+            return True
+        
+        # Synonym / tag list check
+        synonyms = CATEGORY_SYNONYMS.get(sc_lower, [])
+        for syn in synonyms:
+            if syn in cat_lower or syn in tags_str or syn in name_lower:
+                return True
+                
+    return False
+
 class OpenStreetMapAdapter:
     """Adapter fetching business data from OpenStreetMap Overpass API."""
     def fetch(self, center_lat: float, center_lon: float, radius_meters: int, categories: List[str]) -> List[Dict[str, Any]]:
@@ -203,10 +248,15 @@ class OpenStreetMapAdapter:
           node["shop"](around:{radius_meters},{center_lat},{center_lon});
           node["healthcare"](around:{radius_meters},{center_lat},{center_lon});
           node["craft"](around:{radius_meters},{center_lat},{center_lon});
+          node["tourism"](around:{radius_meters},{center_lat},{center_lon});
+          node["office"](around:{radius_meters},{center_lat},{center_lon});
           way["amenity"](around:{radius_meters},{center_lat},{center_lon});
           way["shop"](around:{radius_meters},{center_lat},{center_lon});
+          way["healthcare"](around:{radius_meters},{center_lat},{center_lon});
+          way["tourism"](around:{radius_meters},{center_lat},{center_lon});
+          way["office"](around:{radius_meters},{center_lat},{center_lon});
         );
-        out center body 60;
+        out center body 80;
         """
         results = []
         for url in overpass_urls:
@@ -225,11 +275,11 @@ class OpenStreetMapAdapter:
                         if not lat or not lon:
                             continue
 
-                        raw_cat = tags.get("amenity") or tags.get("shop") or tags.get("healthcare") or tags.get("craft") or "Local Business"
+                        raw_cat = tags.get("amenity") or tags.get("shop") or tags.get("healthcare") or tags.get("tourism") or tags.get("craft") or tags.get("office") or "Local Business"
                         cat_formatted = raw_cat.replace("_", " ").title()
 
                         if categories and len(categories) > 0:
-                            if not any(sc.lower() in cat_formatted.lower() or cat_formatted.lower() in sc.lower() for sc in categories):
+                            if not is_category_match(cat_formatted, tags, name, categories):
                                 continue
 
                         phone = tags.get("phone") or tags.get("contact:phone") or tags.get("mobile")

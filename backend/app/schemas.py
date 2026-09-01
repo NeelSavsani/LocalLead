@@ -71,7 +71,14 @@ class DiscoveryRequest(BaseModel):
     location: str # Location name OR Google Maps link
     gmaps_url: Optional[str] = None # Optional explicit Google Maps URL
     radius_km: float = 1.0
-    categories: Optional[List[str]] = Field(default_factory=lambda: ["Restaurant", "Cafe", "Garage", "Salon", "Clinic", "Retail Store"])
+    categories: Optional[List[str]] = Field(default_factory=lambda: [
+        "Garage / Auto Repair", "Hospital", "Clinic & Medical", "Hostel", 
+        "PG (Paying Guest)", "Small Retailer / General Store", "Salon / Saloon", 
+        "Restaurant", "Cafe", "Hotel & Lodging", "Pharmacy / Medical Store", 
+        "Gym & Fitness Center", "Coaching & Education", "Bakery & Sweets", 
+        "Electronics & Mobile Shop", "Boutique & Clothing", "Jewellery Store", 
+        "Spa & Wellness", "Laundry & Dry Cleaning", "Real Estate & Agency"
+    ])
 
 # Project Schemas
 class ProjectCreate(BaseModel):

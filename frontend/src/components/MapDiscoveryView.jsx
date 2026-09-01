@@ -10,7 +10,28 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
 
-const CATEGORIES = ["Restaurant", "Cafe", "Garage", "Salon", "Clinic", "Retail Store"];
+const CATEGORIES = [
+  "Garage / Auto Repair",
+  "Hospital",
+  "Clinic & Medical",
+  "Hostel",
+  "PG (Paying Guest)",
+  "Small Retailer / General Store",
+  "Salon / Saloon",
+  "Restaurant",
+  "Cafe",
+  "Hotel & Lodging",
+  "Pharmacy / Medical Store",
+  "Gym & Fitness Center",
+  "Coaching & Education",
+  "Bakery & Sweets",
+  "Electronics & Mobile Shop",
+  "Boutique & Clothing",
+  "Jewellery Store",
+  "Spa & Wellness",
+  "Laundry & Dry Cleaning",
+  "Real Estate & Agency"
+];
 
 // Map Tile Layers Config
 const TILE_LAYERS = {
@@ -446,10 +467,40 @@ export default function MapDiscoveryView({ leads, mapCenter, onScan, loading, se
           </div>
 
           <div>
-            <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>
-              CATEGORIES
-            </label>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+              <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)' }}>
+                CATEGORIES ({selectedCategories.length}/{CATEGORIES.length})
+              </label>
+              <div style={{ display: 'flex', gap: '6px' }}>
+                <button
+                  type="button"
+                  onClick={() => setSelectedCategories([...CATEGORIES])}
+                  style={{ background: 'none', border: 'none', color: '#818cf8', fontSize: '0.72rem', cursor: 'pointer', fontWeight: 600 }}
+                >
+                  Select All
+                </button>
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem' }}>|</span>
+                <button
+                  type="button"
+                  onClick={() => setSelectedCategories([])}
+                  style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '0.72rem', cursor: 'pointer', fontWeight: 600 }}
+                >
+                  Clear
+                </button>
+              </div>
+            </div>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: '6px',
+              maxHeight: '180px',
+              overflowY: 'auto',
+              paddingRight: '4px',
+              border: '1px solid var(--border-subtle)',
+              borderRadius: '8px',
+              padding: '8px',
+              background: 'rgba(15, 23, 42, 0.4)'
+            }}>
               {CATEGORIES.map((cat) => (
                 <label
                   key={cat}
@@ -457,18 +508,25 @@ export default function MapDiscoveryView({ leads, mapCenter, onScan, loading, se
                     display: 'flex',
                     alignItems: 'center',
                     gap: '6px',
-                    fontSize: '0.8rem',
+                    fontSize: '0.78rem',
                     color: selectedCategories.includes(cat) ? '#fff' : 'var(--text-dim)',
-                    cursor: 'pointer'
+                    cursor: 'pointer',
+                    padding: '3px 5px',
+                    borderRadius: '4px',
+                    background: selectedCategories.includes(cat) ? 'rgba(99, 102, 241, 0.2)' : 'transparent',
+                    border: selectedCategories.includes(cat) ? '1px solid rgba(99, 102, 241, 0.4)' : '1px solid transparent',
+                    transition: 'all 0.15s ease'
                   }}
                 >
                   <input
                     type="checkbox"
                     checked={selectedCategories.includes(cat)}
                     onChange={() => toggleCategory(cat)}
-                    style={{ accentColor: 'var(--primary)' }}
+                    style={{ accentColor: 'var(--primary)', cursor: 'pointer' }}
                   />
-                  {cat}
+                  <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={cat}>
+                    {cat}
+                  </span>
                 </label>
               ))}
             </div>
