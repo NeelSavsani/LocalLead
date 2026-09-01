@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, MapPin, Layers, Globe, Phone, ShieldCheck, CheckCircle2, Sparkles, Navigation, Link as LinkIcon, AlertTriangle, Eye, ExternalLink, Clipboard } from 'lucide-react';
+import { Search, MapPin, Layers, Globe, Phone, ShieldCheck, CheckCircle2, Sparkles, Navigation, Link as LinkIcon, AlertTriangle, Eye, ExternalLink, Clipboard, X, Filter } from 'lucide-react';
 import L from 'leaflet';
 
 // Fix default Leaflet icon paths
@@ -72,6 +72,8 @@ export default function MapDiscoveryView({ leads, mapCenter, onScan, loading, se
   });
 
   const [selectedCategories, setSelectedCategories] = useState(CATEGORIES);
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [categorySearchQuery, setCategorySearchQuery] = useState('');
   const [selectedLead, setSelectedLead] = useState(null);
   const [gmapsUrl, setGmapsUrl] = useState('');
   const [pastedStatus, setPastedStatus] = useState(false);
@@ -467,68 +469,53 @@ export default function MapDiscoveryView({ leads, mapCenter, onScan, loading, se
           </div>
 
           <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-              <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)' }}>
-                CATEGORIES ({selectedCategories.length}/{CATEGORIES.length})
-              </label>
-              <div style={{ display: 'flex', gap: '6px' }}>
-                <button
-                  type="button"
-                  onClick={() => setSelectedCategories([...CATEGORIES])}
-                  style={{ background: 'none', border: 'none', color: '#818cf8', fontSize: '0.72rem', cursor: 'pointer', fontWeight: 600 }}
-                >
-                  Select All
-                </button>
-                <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem' }}>|</span>
-                <button
-                  type="button"
-                  onClick={() => setSelectedCategories([])}
-                  style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '0.72rem', cursor: 'pointer', fontWeight: 600 }}
-                >
-                  Clear
-                </button>
+            <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>
+              TARGET CATEGORIES
+            </label>
+            <button
+              type="button"
+              onClick={() => setShowCategoryModal(true)}
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '11px 14px',
+                borderRadius: '8px',
+                border: '1px solid rgba(99, 102, 241, 0.4)',
+                background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(6, 182, 212, 0.08) 100%)',
+                color: '#f8fafc',
+                fontSize: '0.85rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Layers size={16} color="#818cf8" />
+                <span>
+                  {selectedCategories.length === CATEGORIES.length
+                    ? 'All Categories Selected'
+                    : selectedCategories.length === 0
+                    ? 'No Category Selected'
+                    : `${selectedCategories.length} Categories Selected`}
+                </span>
               </div>
-            </div>
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr 1fr',
-              gap: '6px',
-              maxHeight: '180px',
-              overflowY: 'auto',
-              paddingRight: '4px',
-              border: '1px solid var(--border-subtle)',
-              borderRadius: '8px',
-              padding: '8px',
-              background: 'rgba(15, 23, 42, 0.4)'
-            }}>
-              {CATEGORIES.map((cat) => (
-                <label
-                  key={cat}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    fontSize: '0.78rem',
-                    color: selectedCategories.includes(cat) ? '#fff' : 'var(--text-dim)',
-                    cursor: 'pointer',
-                    padding: '3px 5px',
-                    borderRadius: '4px',
-                    background: selectedCategories.includes(cat) ? 'rgba(99, 102, 241, 0.2)' : 'transparent',
-                    border: selectedCategories.includes(cat) ? '1px solid rgba(99, 102, 241, 0.4)' : '1px solid transparent',
-                    transition: 'all 0.15s ease'
-                  }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedCategories.includes(cat)}
-                    onChange={() => toggleCategory(cat)}
-                    style={{ accentColor: 'var(--primary)', cursor: 'pointer' }}
-                  />
-                  <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={cat}>
-                    {cat}
-                  </span>
-                </label>
-              ))}
+              <span style={{
+                fontSize: '0.74rem',
+                background: 'rgba(99, 102, 241, 0.25)',
+                border: '1px solid rgba(99, 102, 241, 0.4)',
+                padding: '3px 8px',
+                borderRadius: '6px',
+                color: '#38bdf8',
+                fontWeight: 600
+              }}>
+                Select Category ↗
+              </span>
+            </button>
+            <div style={{ fontSize: '0.73rem', color: '#94a3b8', marginTop: '6px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              Active: {selectedCategories.length === CATEGORIES.length ? 'All 20 Categories' : selectedCategories.join(', ') || 'None'}
             </div>
           </div>
 
@@ -730,6 +717,190 @@ export default function MapDiscoveryView({ leads, mapCenter, onScan, loading, se
           })
         )}
       </aside>
+
+      {/* Category Selection Modal Popup */}
+      {showCategoryModal && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 9999,
+            background: 'rgba(11, 15, 23, 0.82)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px'
+          }}
+          onClick={() => setShowCategoryModal(false)}
+        >
+          <div
+            style={{
+              width: 'min(640px, 94vw)',
+              maxHeight: '85vh',
+              background: 'linear-gradient(145deg, #1e293b 0%, #0f172a 100%)',
+              border: '1px solid rgba(99, 102, 241, 0.35)',
+              borderRadius: '16px',
+              padding: '24px',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.85), 0 0 30px rgba(99, 102, 241, 0.2)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '16px'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '14px' }}>
+              <div>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Layers size={20} color="#818cf8" />
+                  Select Business Categories
+                </h3>
+                <p style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '2px' }}>
+                  Select categories for discovery scan ({selectedCategories.length} of {CATEGORIES.length} selected)
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowCategoryModal(false)}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.08)',
+                  border: 'none',
+                  color: '#94a3b8',
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '8px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer'
+                }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Quick Search & Controls */}
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+              <div style={{ position: 'relative', flex: 1 }}>
+                <input
+                  type="text"
+                  placeholder="Filter categories (Garage, Hospital, PG, Salon)..."
+                  value={categorySearchQuery}
+                  onChange={(e) => setCategorySearchQuery(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px 10px 36px',
+                    borderRadius: '8px',
+                    border: '1px solid var(--border-subtle)',
+                    background: 'rgba(15, 23, 42, 0.6)',
+                    color: '#f8fafc',
+                    fontSize: '0.84rem'
+                  }}
+                />
+                <Search size={16} color="#64748b" style={{ position: 'absolute', left: '12px', top: '12px' }} />
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setSelectedCategories([...CATEGORIES])}
+                style={{
+                  padding: '9px 14px',
+                  borderRadius: '8px',
+                  border: '1px solid rgba(99, 102, 241, 0.4)',
+                  background: 'rgba(99, 102, 241, 0.2)',
+                  color: '#818cf8',
+                  fontSize: '0.78rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                Select All
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedCategories([])}
+                style={{
+                  padding: '9px 14px',
+                  borderRadius: '8px',
+                  border: '1px solid var(--border-subtle)',
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  color: '#94a3b8',
+                  fontSize: '0.78rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                Clear All
+              </button>
+            </div>
+
+            {/* Categories List */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
+              gap: '8px',
+              maxHeight: '380px',
+              overflowY: 'auto',
+              paddingRight: '4px'
+            }}>
+              {CATEGORIES.filter(cat => cat.toLowerCase().includes(categorySearchQuery.toLowerCase())).map((cat) => {
+                const isChecked = selectedCategories.includes(cat);
+                return (
+                  <div
+                    key={cat}
+                    onClick={() => toggleCategory(cat)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '10px 12px',
+                      borderRadius: '8px',
+                      border: isChecked ? '1px solid rgba(99, 102, 241, 0.5)' : '1px solid rgba(255, 255, 255, 0.06)',
+                      background: isChecked ? 'rgba(99, 102, 241, 0.18)' : 'rgba(15, 23, 42, 0.4)',
+                      color: isChecked ? '#ffffff' : '#94a3b8',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                      userSelect: 'none'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden' }}>
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => {}}
+                        style={{ accentColor: 'var(--primary)', cursor: 'pointer' }}
+                      />
+                      <span style={{ fontSize: '0.84rem', fontWeight: isChecked ? 600 : 400, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {cat}
+                      </span>
+                    </div>
+                    {isChecked && <CheckCircle2 size={16} color="#38bdf8" />}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Modal Footer */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border-subtle)', paddingTop: '14px', marginTop: '6px' }}>
+              <span style={{ fontSize: '0.78rem', color: '#94a3b8' }}>
+                {selectedCategories.length} categories active for discovery scan
+              </span>
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={() => setShowCategoryModal(false)}
+                style={{ padding: '8px 20px', borderRadius: '8px', fontSize: '0.85rem' }}
+              >
+                Done &amp; Apply
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );
