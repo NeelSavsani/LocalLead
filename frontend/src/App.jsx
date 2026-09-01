@@ -17,11 +17,36 @@ export default function App() {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(false);
   const [scanError, setScanError] = useState(null);
-  const [mapCenter, setMapCenter] = useState({ latitude: 23.2245, longitude: 72.6515 });
 
-  // Search parameters
-  const [searchLocation, setSearchLocation] = useState('Racecourse, Rajkot');
+  // Search location & map center state persisted in localStorage
+  const [searchLocation, setSearchLocation] = useState(() => {
+    return localStorage.getItem('locallead_search_location') || 'Racecourse, Rajkot';
+  });
+
+  const [mapCenter, setMapCenter] = useState(() => {
+    const saved = localStorage.getItem('locallead_map_center');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {}
+    }
+    return { latitude: 22.2999, longitude: 70.7912 }; // Default Racecourse Rajkot
+  });
+
   const [radius, setRadius] = useState(1.0);
+
+  // Save searchLocation and mapCenter to localStorage
+  useEffect(() => {
+    if (searchLocation) {
+      localStorage.setItem('locallead_search_location', searchLocation);
+    }
+  }, [searchLocation]);
+
+  useEffect(() => {
+    if (mapCenter) {
+      localStorage.setItem('locallead_map_center', JSON.stringify(mapCenter));
+    }
+  }, [mapCenter]);
 
   // Fetch initial leads, stats, and projects
   const fetchAllData = async () => {

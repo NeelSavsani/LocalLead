@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, MapPin, Layers, Globe, Phone, ShieldCheck, CheckCircle2, Sparkles, Navigation, Link as LinkIcon, AlertTriangle, ExternalLink } from 'lucide-react';
+import { Search, MapPin, Layers, Globe, Phone, ShieldCheck, CheckCircle2, Sparkles, Navigation, Link as LinkIcon, AlertTriangle, Eye, ExternalLink, Clipboard } from 'lucide-react';
 import L from 'leaflet';
 
 // Fix default Leaflet icon paths
@@ -45,19 +45,34 @@ export default function MapDiscoveryView({ leads, mapCenter, onScan, loading, se
   const circleRef = useRef(null);
   const centerMarkerRef = useRef(null);
 
-  const [mapStyle, setMapStyle] = useState('normal'); // 'normal', 'satellite', 'terrain'
+  // Persist selected mapStyle (normal, satellite, terrain) in localStorage
+  const [mapStyle, setMapStyle] = useState(() => {
+    return localStorage.getItem('locallead_map_style') || 'normal';
+  });
+
   const [selectedCategories, setSelectedCategories] = useState(CATEGORIES);
   const [selectedLead, setSelectedLead] = useState(null);
   const [gmapsUrl, setGmapsUrl] = useState('');
+  const [pastedStatus, setPastedStatus] = useState(false);
+
+  // Save mapStyle preference on change
+  useEffect(() => {
+    localStorage.setItem('locallead_map_style', mapStyle);
+  }, [mapStyle]);
 
   // Initialize Map
   useEffect(() => {
     if (!mapRef.current) return;
 
     if (!mapInstanceRef.current) {
-      const map = L.map(mapRef.current).setView([23.2245, 72.6515], 14);
+      const initialStyleKey = localStorage.getItem('locallead_map_style') || 'normal';
+      const initialConfig = TILE_LAYERS[initialStyleKey] || TILE_LAYERS.normal;
 
-      const initialConfig = TILE_LAYERS.normal;
+      const initialLat = mapCenter ? mapCenter.latitude : 22.2999;
+      const initialLng = mapCenter ? mapCenter.longitude : 70.7912;
+
+      const map = L.map(mapRef.current).setView([initialLat, initialLng], 14);
+
       tileLayerRef.current = L.tileLayer(initialConfig.url, {
         attribution: initialConfig.attribution,
         maxZoom: initialConfig.maxZoom
@@ -68,7 +83,7 @@ export default function MapDiscoveryView({ leads, mapCenter, onScan, loading, se
     }
   }, []);
 
-  // Change Map Style (Normal, Satellite, Terrain)
+  // Change Map Style (Normal, Satellite, Terrain) dynamically
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map || !tileLayerRef.current) return;
@@ -259,6 +274,20 @@ export default function MapDiscoveryView({ leads, mapCenter, onScan, loading, se
     }
   };
 
+  const handlePasteFromClipboard = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text && text.trim()) {
+        setGmapsUrl(text.trim());
+        if (scanError) setScanError(null);
+        setPastedStatus(true);
+        setTimeout(() => setPastedStatus(false), 2000);
+      }
+    } catch (err) {
+      console.error("Clipboard paste error:", err);
+    }
+  };
+
   const handleScanSubmit = (e) => {
     e.preventDefault();
     onScan(searchLocation, radius, selectedCategories, gmapsUrl);
@@ -305,7 +334,7 @@ export default function MapDiscoveryView({ leads, mapCenter, onScan, loading, se
             </div>
           </div>
 
-          {/* Dedicated Google Maps URL Input */}
+          {/* Dedicated Google Maps URL Input with Paste Button Placed Just Below */}
           <div>
             <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>
               OR GOOGLE MAPS LINK / COORDINATES
@@ -331,8 +360,36 @@ export default function MapDiscoveryView({ leads, mapCenter, onScan, loading, se
               />
               <LinkIcon size={15} color={gmapsUrl ? "var(--primary)" : "var(--text-muted)"} style={{ position: 'absolute', left: '12px', top: '12px' }} />
             </div>
+
+            {/* Paste Button Placed Directly Below URL Field */}
+            <button
+              type="button"
+              onClick={handlePasteFromClipboard}
+              title="Paste Google Maps URL from clipboard"
+              style={{
+                width: '100%',
+                marginTop: '8px',
+                padding: '8px 12px',
+                borderRadius: '6px',
+                border: '1px solid rgba(99, 102, 241, 0.4)',
+                background: pastedStatus ? '#10b981' : 'rgba(99, 102, 241, 0.18)',
+                color: pastedStatus ? '#fff' : '#a5b4fc',
+                fontSize: '0.78rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              <Clipboard size={14} />
+              {pastedStatus ? 'Pasted from Clipboard!' : ' Paste from Clipboard'}
+            </button>
+
             <span style={{ fontSize: '0.72rem', color: 'var(--text-dim)', marginTop: '4px', display: 'block' }}>
-              Tip: Copy link from Google Maps on phone or browser and paste here!
+              Tip: Copy link from Google Maps on phone or browser and click Paste!
             </span>
           </div>
 
@@ -354,7 +411,7 @@ export default function MapDiscoveryView({ leads, mapCenter, onScan, loading, se
               </div>
               <div>{scanError}</div>
               <div style={{ fontSize: '0.74rem', color: '#fecdd3', marginTop: '2px' }}>
-                👉 Copy the address link from <strong>Google Maps</strong> and paste it into the box above to scan immediately!
+                👉 Copy the address link from <strong>Google Maps</strong> and click <strong>Paste</strong> above to scan immediately!
               </div>
             </div>
           )}
