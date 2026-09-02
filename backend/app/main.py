@@ -49,7 +49,7 @@ def discover_and_qualify(req: DiscoveryRequest, db: Session = Depends(get_db)):
     Search an area, discover businesses from multiple adapters, deduplicate records,
     validate radius, perform website audits & phone contact enrichment, score leads, and save.
     """
-    results = discover_businesses(req.location, req.radius_km, req.categories or [], gmaps_url=req.gmaps_url)
+    results = discover_businesses(req.location, req.radius_km, req.categories or [], gmaps_url=req.gmaps_url, limit=req.limit)
     
     if not results.get("location_resolved", True):
         return {

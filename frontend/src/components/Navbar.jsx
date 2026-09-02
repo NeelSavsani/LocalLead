@@ -86,7 +86,7 @@ export default function Navbar({ activeTab, setActiveTab, stats, onExport, searc
           title={searchLocation ? `Export leads for "${searchLocation}" to Excel (.xlsx)` : "Export Leads Database to Excel (.xlsx)"}
         >
           <Download size={16} />
-          Export Excel ({searchLocation ? searchLocation.split(',')[0] : 'Search'})
+          Export Excel
         </button>
       </div>
     </header>

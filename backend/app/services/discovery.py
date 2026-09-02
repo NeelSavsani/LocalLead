@@ -380,14 +380,14 @@ def deduplicate_results(raw_list: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 # 3. SCAN ORCHESTRATOR & GEO VALIDATION
 # ----------------------------------------------------
 
-def discover_businesses(location_str: str, radius_km: float, selected_categories: List[str], gmaps_url: str = None) -> Dict[str, Any]:
+def discover_businesses(location_str: str, radius_km: float = 15.0, selected_categories: List[str] = None, gmaps_url: str = None, limit: int = None) -> Dict[str, Any]:
     """
     Multi-Source Business Discovery Pipeline:
-    1. Resolve Location Coordinates
+    1. Resolve City / Village / Location Coordinates
     2. Query Source Adapters (OSM + Places)
     3. Merge & Deduplicate Results
-    4. Independent Geographic Radius Validation
-    5. Contact Enrichment Engine for Phone Numbers
+    4. Contact Enrichment Engine for Phone Numbers
+    5. Apply Max Leads Limit (if specified)
     """
     search_target = gmaps_url.strip() if (gmaps_url and gmaps_url.strip()) else location_str
     center_lat, center_lon, display_name, resolved_ok = geocode_location(search_target)
@@ -398,12 +398,12 @@ def discover_businesses(location_str: str, radius_km: float, selected_categories
             "location_resolved": False,
             "error_message": f"Could not find coordinates for '{location_str}'. Please enter a Google Maps URL below.",
             "center": None,
-            "radius_km": radius_km,
+            "radius_km": radius_km or 15.0,
             "total_discovered": 0,
             "businesses": []
         }
 
-    radius_meters = int(radius_km * 1000)
+    radius_meters = int((radius_km or 15.0) * 1000)
 
     # 1. Collect from Adapters
     osm_adapter = OpenStreetMapAdapter()
@@ -416,23 +416,28 @@ def discover_businesses(location_str: str, radius_km: float, selected_categories
     # 2. Deduplicate Across Sources
     merged_businesses = deduplicate_results(raw_results)
 
-    # 3. Independent Geographic Validation & Contact Enrichment
+    # 3. Distance Calculation & Contact Enrichment (No Radius Cutoff Restriction)
     validated_businesses = []
     for b in merged_businesses:
         dist_m = calculate_distance(center_lat, center_lon, b["latitude"], b["longitude"])
-        if dist_m <= radius_meters:
-            b["distance_meters"] = dist_m
+        b["distance_meters"] = dist_m
 
-            # Contact enrichment: if phone is missing, run multi-strategy enrichment
-            if not b.get("phone"):
-                enriched_ph = enrich_phone_number(b["name"], display_name)
-                if enriched_ph:
-                    b["phone"] = enriched_ph
+        # Contact enrichment: if phone is missing, run multi-strategy enrichment
+        if not b.get("phone"):
+            enriched_ph = enrich_phone_number(b["name"], display_name)
+            if enriched_ph:
+                b["phone"] = enriched_ph
 
-            validated_businesses.append(b)
+        validated_businesses.append(b)
 
-    # Sort by distance
+    # Sort by proximity distance
     validated_businesses.sort(key=lambda x: x["distance_meters"])
+
+    total_discovered = len(validated_businesses)
+
+    # Apply Limit if specified
+    if limit and isinstance(limit, int) and limit > 0:
+        validated_businesses = validated_businesses[:limit]
 
     return {
         "search_location": display_name,
@@ -440,6 +445,7 @@ def discover_businesses(location_str: str, radius_km: float, selected_categories
         "error_message": None,
         "center": {"latitude": center_lat, "longitude": center_lon},
         "radius_km": radius_km,
-        "total_discovered": len(validated_businesses),
+        "total_discovered": total_discovered,
+        "returned_count": len(validated_businesses),
         "businesses": validated_businesses
     }

@@ -68,9 +68,10 @@ class LeadUpdateStatus(BaseModel):
 
 # Discovery Search Request with Google Maps URL support
 class DiscoveryRequest(BaseModel):
-    location: str # Location name OR Google Maps link
+    location: str # City, village name OR Google Maps link
     gmaps_url: Optional[str] = None # Optional explicit Google Maps URL
     radius_km: float = 1.0
+    limit: Optional[int] = Field(default=None, description="Max leads limit to return (e.g. 20)")
     categories: Optional[List[str]] = Field(default_factory=lambda: [
         "Garage / Auto Repair", "Hospital", "Clinic & Medical", "Hostel", 
         "PG (Paying Guest)", "Small Retailer / General Store", "Salon / Saloon", 

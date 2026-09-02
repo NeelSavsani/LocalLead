@@ -74,6 +74,7 @@ export default function MapDiscoveryView({ leads, mapCenter, onScan, loading, se
   const [selectedCategories, setSelectedCategories] = useState(CATEGORIES);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [categorySearchQuery, setCategorySearchQuery] = useState('');
+  const [limit, setLimit] = useState('20');
   const [selectedLead, setSelectedLead] = useState(null);
   const [gmapsUrl, setGmapsUrl] = useState('');
   const [pastedStatus, setPastedStatus] = useState(false);
@@ -127,16 +128,10 @@ export default function MapDiscoveryView({ leads, mapCenter, onScan, loading, se
 
     map.setView([mapCenter.latitude, mapCenter.longitude], 14);
 
-    // Update Radius Circle
+    // Remove old radius circle if existing
     if (circleRef.current) {
       map.removeLayer(circleRef.current);
     }
-    circleRef.current = L.circle([mapCenter.latitude, mapCenter.longitude], {
-      color: mapStyle === 'satellite' ? '#38bdf8' : '#6366f1',
-      fillColor: mapStyle === 'satellite' ? '#38bdf8' : '#6366f1',
-      fillOpacity: 0.15,
-      radius: radius * 1000
-    }).addTo(map);
 
     // Render Standalone Search Center Pin Icon (No background circle)
     if (centerMarkerRef.current) {
@@ -172,9 +167,6 @@ export default function MapDiscoveryView({ leads, mapCenter, onScan, loading, se
         <div style="font-size: 0.82rem; color: #f8fafc; margin-top: 4px; font-weight: 600;">${searchLocation}</div>
         <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 2px;">
           Coordinates: ${mapCenter.latitude.toFixed(4)}°, ${mapCenter.longitude.toFixed(4)}°
-        </div>
-        <div style="font-size: 0.75rem; color: #38bdf8; margin-top: 4px;">
-          Radius: ${radius} km (${radius * 1000}m)
         </div>
         <div style="margin-top: 8px;">
           <a href="${gmapsSearchUrl}" target="_blank" rel="noopener noreferrer" style="
@@ -313,7 +305,8 @@ export default function MapDiscoveryView({ leads, mapCenter, onScan, loading, se
 
   const handleScanSubmit = (e) => {
     e.preventDefault();
-    onScan(searchLocation, radius, selectedCategories, gmapsUrl);
+    const parsedLimit = limit && !isNaN(parseInt(limit, 10)) && parseInt(limit, 10) > 0 ? parseInt(limit, 10) : null;
+    onScan(searchLocation, radius, selectedCategories, gmapsUrl, parsedLimit);
   };
 
   return (
@@ -324,15 +317,15 @@ export default function MapDiscoveryView({ leads, mapCenter, onScan, loading, se
         <div>
           <h2 style={{ fontSize: '1.1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: '#fff' }}>
             <MapPin size={18} color="var(--primary)" />
-            Multi-Source Scan Setup
+            Multi-Source City &amp; Village Scan
           </h2>
-          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '4px' }}>Search by area name or paste a Google Maps link.</p>
+          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '4px' }}>Search directly by city or village name, or paste a Google Maps link.</p>
         </div>
 
         <form onSubmit={handleScanSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div>
             <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>
-              LOCATION / LANDMARK NAME
+              CITY OR VILLAGE NAME
             </label>
             <div style={{ position: 'relative' }}>
               <input
@@ -342,7 +335,7 @@ export default function MapDiscoveryView({ leads, mapCenter, onScan, loading, se
                   setSearchLocation(e.target.value);
                   if (scanError) setScanError(null);
                 }}
-                placeholder="e.g. Racecourse, Rajkot or LDRP Gandhinagar"
+                placeholder="e.g. Rajkot, Gandhinagar, Anand, Morbi, Surat, or Village Name"
                 style={{
                   width: '100%',
                   padding: '10px 12px 10px 36px',
@@ -439,34 +432,7 @@ export default function MapDiscoveryView({ leads, mapCenter, onScan, loading, se
             </div>
           )}
 
-          <div>
-            <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>
-              RADIUS VALIDATION: <strong style={{ color: 'var(--primary)' }}>{radius} km ({radius * 1000} m)</strong>
-            </label>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              {[0.5, 1.0, 2.0, 5.0].map((r) => (
-                <button
-                  type="button"
-                  key={r}
-                  onClick={() => setRadius(r)}
-                  style={{
-                    flex: 1,
-                    padding: '6px',
-                    borderRadius: '6px',
-                    border: '1px solid',
-                    borderColor: radius === r ? 'var(--primary)' : 'var(--border-subtle)',
-                    background: radius === r ? 'rgba(99,102,241,0.2)' : 'transparent',
-                    color: radius === r ? '#fff' : 'var(--text-muted)',
-                    fontSize: '0.8rem',
-                    fontWeight: 600,
-                    cursor: 'pointer'
-                  }}
-                >
-                  {r < 1 ? `${r * 1000}m` : `${r}km`}
-                </button>
-              ))}
-            </div>
-          </div>
+
 
           <div>
             <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>
@@ -517,6 +483,38 @@ export default function MapDiscoveryView({ leads, mapCenter, onScan, loading, se
             <div style={{ fontSize: '0.73rem', color: '#94a3b8', marginTop: '6px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               Active: {selectedCategories.length === CATEGORIES.length ? 'All 20 Categories' : selectedCategories.join(', ') || 'None'}
             </div>
+          </div>
+
+          {/* Custom Max Leads Limit Input */}
+          <div>
+            <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>
+              MAX LEADS LIMIT
+            </label>
+            <div style={{ position: 'relative' }}>
+              <input
+                type="number"
+                min="1"
+                max="500"
+                value={limit}
+                onChange={(e) => setLimit(e.target.value)}
+                placeholder="Enter max leads count (e.g. 20, 50, 100)..."
+                style={{
+                  width: '100%',
+                  padding: '10px 12px 10px 36px',
+                  borderRadius: 'var(--radius-sm)',
+                  border: '1px solid var(--border-subtle)',
+                  background: 'rgba(0,0,0,0.3)',
+                  color: '#fff',
+                  fontSize: '0.88rem'
+                }}
+              />
+              <Filter size={16} color="var(--text-muted)" style={{ position: 'absolute', left: '12px', top: '12px' }} />
+            </div>
+            <span style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '4px', display: 'block' }}>
+              {limit && parseInt(limit, 10) > 0
+                ? `Will display up to first ${limit} leads sorted by distance`
+                : 'Leave empty or 0 to show all discovered leads'}
+            </span>
           </div>
 
           <button

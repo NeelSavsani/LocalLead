@@ -69,7 +69,7 @@ export default function App() {
     fetchAllData();
   }, []);
 
-  const triggerScan = async (loc, radKm, categories, gmapsUrl) => {
+  const triggerScan = async (loc, radKm, categories, gmapsUrl, limitVal) => {
     setLoading(true);
     setScanError(null);
 
@@ -81,6 +81,7 @@ export default function App() {
           location: loc || searchLocation,
           gmaps_url: gmapsUrl || undefined,
           radius_km: radKm || radius,
+          limit: limitVal || undefined,
           categories: categories && categories.length > 0 ? categories : undefined
         })
       });
