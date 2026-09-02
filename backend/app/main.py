@@ -9,7 +9,7 @@ from .database import engine, Base, get_db
 from .models import Business, WebsiteAnalysis, Lead, LeadActivity, Project
 from .schemas import (
     DiscoveryRequest, BusinessOut, LeadOut, LeadUpdateStatus,
-    ProjectCreate, ProjectOut, ProjectUpdateStatus
+    ProjectCreate, ProjectOut, ProjectUpdateStatus, LoginRequest
 )
 from .services.discovery import discover_businesses, enrich_phone_number
 from .services.web_auditor import audit_website
@@ -40,8 +40,30 @@ def read_root():
         "status": "online",
         "app": "LocalLead API — Multi-Source Engine",
         "version": "2.0.0",
-        "endpoints": ["/api/v1/discover", "/api/v1/leads", "/api/v1/export", "/api/v1/projects", "/api/v1/stats", "/api/v1/enrich-phones"]
+        "endpoints": ["/api/v1/login", "/api/v1/discover", "/api/v1/leads", "/api/v1/export", "/api/v1/projects", "/api/v1/stats", "/api/v1/enrich-phones"]
     }
+
+@app.post("/api/v1/login")
+def admin_login(req: LoginRequest):
+    """
+    Admin Authentication Endpoint.
+    Validates administrator login credentials.
+    """
+    valid_usernames = ["admin", "admin@locallead.app"]
+    valid_passwords = ["admin", "admin123"]
+
+    if req.username.strip().lower() in valid_usernames and req.password in valid_passwords:
+        return {
+            "authenticated": True,
+            "token": "admin-session-token-locallead-auth-2026",
+            "user": {
+                "username": req.username.strip(),
+                "role": "Administrator",
+                "login_time": datetime.datetime.now(datetime.timezone.utc).isoformat()
+            }
+        }
+    
+    raise HTTPException(status_code=401, detail="Access Denied: Invalid admin username or password.")
 
 @app.post("/api/v1/discover")
 def discover_and_qualify(req: DiscoveryRequest, db: Session = Depends(get_db)):

@@ -5,10 +5,14 @@ import LeadsTableView from './components/LeadsTableView';
 import CrmKanbanView from './components/CrmKanbanView';
 import ProjectsView from './components/ProjectsView';
 import StatsDashboardView from './components/StatsDashboardView';
+import LoginView from './components/LoginView';
 
 const API_BASE = 'http://127.0.0.1:8000/api/v1';
 
 export default function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    return localStorage.getItem('locallead_auth') === 'true';
+  });
   const [activeTab, setActiveTab] = useState('map');
   
   // Data state
@@ -177,6 +181,16 @@ export default function App() {
     }
   };
 
+  const handleLogout = () => {
+    localStorage.removeItem('locallead_auth');
+    localStorage.removeItem('locallead_user');
+    setIsAuthenticated(false);
+  };
+
+  if (!isAuthenticated) {
+    return <LoginView onLoginSuccess={() => setIsAuthenticated(true)} />;
+  }
+
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       <Navbar
@@ -185,6 +199,7 @@ export default function App() {
         stats={stats}
         onExport={handleExport}
         searchLocation={searchLocation}
+        onLogout={handleLogout}
       />
 
       <main style={{ flex: 1 }}>

@@ -66,6 +66,11 @@ class LeadUpdateStatus(BaseModel):
     estimated_budget: Optional[str] = None
     next_follow_up: Optional[str] = None
 
+# Admin Authentication Schema
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
 # Discovery Search Request with Google Maps URL support
 class DiscoveryRequest(BaseModel):
     location: str # City, village name OR Google Maps link

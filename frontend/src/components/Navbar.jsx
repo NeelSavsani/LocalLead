@@ -1,7 +1,7 @@
 import React from 'react';
-import { MapPin, Table, Kanban, FolderKanban, BarChart3, Sparkles, Download } from 'lucide-react';
+import { MapPin, Table, Kanban, FolderKanban, BarChart3, Sparkles, Download, LogOut } from 'lucide-react';
 
-export default function Navbar({ activeTab, setActiveTab, stats, onExport, searchLocation }) {
+export default function Navbar({ activeTab, setActiveTab, stats, onExport, searchLocation, onLogout }) {
   const tabs = [
     { id: 'map', label: 'Geo-Map Discovery', icon: MapPin },
     { id: 'table', label: 'Leads Table', icon: Table },
@@ -88,6 +88,31 @@ export default function Navbar({ activeTab, setActiveTab, stats, onExport, searc
           <Download size={16} />
           Export Excel
         </button>
+
+        {onLogout && (
+          <button
+            type="button"
+            onClick={onLogout}
+            title="Log out of Admin session"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '8px 12px',
+              borderRadius: '8px',
+              border: '1px solid rgba(244, 63, 94, 0.35)',
+              background: 'rgba(244, 63, 94, 0.12)',
+              color: '#fb7185',
+              fontSize: '0.82rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            <LogOut size={15} />
+            Logout
+          </button>
+        )}
       </div>
     </header>
   );
